@@ -35,6 +35,7 @@ export default function SignIn() {
   const inputStyle = "border-2 border-zinc-900 bg-white p-2 shadow-inner";
 
   return (
+    //bACKGOURND COLOUR
     <div className="min-h-screen flex items-center justify-center bg-[#92B6F0] font-sans p-4">
           {/* Main Window Container */}
       <div className={`w-full max-w-md bg-white ${boxStyle}`}>
@@ -52,6 +53,8 @@ export default function SignIn() {
         </div>
 
         {/* Form Content */}
+        //INTERNLINKED COLOUR
+
         <div className="p-8">
           <div className="mb-10 text-left border-b-2 border-zinc-100 pb-4">
           <h1 className="text-4xl font-black italic tracking-tighter uppercase">
