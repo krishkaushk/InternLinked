@@ -10,7 +10,6 @@ export function Navigation({ currentView, onViewChange, userStats }) {
 
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
-        { id: 'matches', label: 'Job_Matches', icon: Target },
         { id: 'applications', label: 'Applications', icon: Briefcase },
         { id: 'profile', label: 'Profile', icon: User },
     ];
