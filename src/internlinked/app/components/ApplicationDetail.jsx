@@ -1,7 +1,6 @@
 import {
     Sheet,
     SheetContent,
-    SheetDescription,
     SheetHeader,
     SheetTitle,
 } from '@/app/components/ui/sheet';
@@ -18,6 +17,7 @@ import {
     Clock,
     Edit,
     Trash2,
+    Database
 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
@@ -28,66 +28,61 @@ import {
     SelectValue,
 } from '@/app/components/ui/select';
 
-// Removed: import { Application, ApplicationStatus } from '@/types';
-// Removed: interface ApplicationDetailProps
-
 const statusConfig = {
-    saved: { label: 'Saved', color: 'bg-gray-100 text-gray-700' },
-    applied: { label: 'Applied', color: 'bg-blue-100 text-blue-700' },
-    interview: { label: 'Interview', color: 'bg-purple-100 text-purple-700' },
-    offer: { label: 'Offer', color: 'bg-green-100 text-green-700' },
-    rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700' },
+    saved: { label: 'SAVED', class: 'bg-zinc-100 text-zinc-900 border-zinc-900' },
+    applied: { label: 'APPLIED', class: 'bg-[#EBBB49] text-zinc-900 border-zinc-900' },
+    interview: { label: 'INTERVIEW', class: 'bg-[#800050] text-white border-zinc-900' },
+    offer: { label: 'OFFER', class: 'bg-green-400 text-zinc-900 border-zinc-900' },
+    rejected: { label: 'REJECTED', class: 'bg-red-500 text-white border-zinc-900' },
 };
 
-export function ApplicationDetail({
-                                      application,
-                                      open,
-                                      onClose,
-                                      onUpdateStatus,
-                                      onDelete,
-                                  }) {
+export function ApplicationDetail({ application, open, onClose, onUpdateStatus, onDelete }) {
     if (!application) return null;
 
-    // Helper to ensure dates are valid objects for date-fns
     const safeFormat = (date, formatStr) => {
-        if (!date) return '';
+        if (!date) return 'N/A';
         return format(new Date(date), formatStr);
     };
 
+    const labelStyle = "text-[10px] font-black uppercase tracking-widest text-zinc-400 mb-2 block";
+    const sectionStyle = "border-2 border-zinc-900 p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] bg-white rounded-none";
+
     return (
         <Sheet open={open} onOpenChange={onClose}>
-            <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-                <SheetHeader>
-                    <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                            <SheetTitle className="text-2xl">{application.position}</SheetTitle>
-                            <SheetDescription className="text-lg mt-1">
-                                {application.companyName}
-                            </SheetDescription>
-                        </div>
+            <SheetContent className="w-full sm:max-w-xl bg-[#FDFCF0] border-l-4 border-zinc-900 p-0 overflow-y-auto rounded-none">
+                {/* Header Section */}
+                <div className="bg-zinc-900 p-8 text-white">
+                    <div className="flex justify-between items-start mb-4">
+                        <Badge className="bg-[#EBBB49] text-zinc-900 border-none font-black text-[10px] rounded-none px-3">
+                            ID_{application.id?.toString().slice(0, 8)}
+                        </Badge>
                         {application.matchScore && (
-                            <div className="flex items-center gap-1 bg-green-50 px-3 py-1 rounded-full">
-                                <Target className="size-4 text-green-600" />
-                                <span className="text-sm font-semibold text-green-600">
-                  {application.matchScore}% Match
-                </span>
+                            <div className="flex items-center gap-2 text-[#EBBB49]">
+                                <Target size={16} strokeWidth={3} />
+                                <span className="font-black italic text-lg">{application.matchScore}%_MATCH</span>
                             </div>
                         )}
                     </div>
-                </SheetHeader>
+                    <SheetTitle className="text-4xl font-black uppercase italic tracking-tighter leading-none text-white">
+                        {application.position}
+                    </SheetTitle>
+                    <p className="text-xl font-bold text-[#EBBB49] mt-2 opacity-90 uppercase tracking-tighter">
+                        {application.companyName || application.company_name}
+                    </p>
+                </div>
 
-                <div className="mt-6 space-y-6">
-                    {/* Status Update */}
-                    <div className="space-y-2">
-                        <label className="text-sm font-medium">Status</label>
+                <div className="p-8 space-y-8">
+                    {/* Status Select */}
+                    <div>
+                        <label className={labelStyle}>Deployment_Status</label>
                         <Select
                             value={application.status}
                             onValueChange={(value) => onUpdateStatus(application.id, value)}
                         >
-                            <SelectTrigger>
+                            <SelectTrigger className="w-full border-2 border-zinc-900 rounded-none bg-white font-black uppercase italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] focus:ring-0">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="border-2 border-zinc-900 rounded-none font-black uppercase italic">
                                 <SelectItem value="saved">Saved</SelectItem>
                                 <SelectItem value="applied">Applied</SelectItem>
                                 <SelectItem value="interview">Interview</SelectItem>
@@ -97,123 +92,75 @@ export function ApplicationDetail({
                         </Select>
                     </div>
 
-                    <Separator />
-
-                    {/* Basic Info */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-gray-700">
-                            <MapPin className="size-5 text-gray-400" />
-                            <span>{application.location}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2 text-gray-700">
-                            <Badge variant="outline">{application.jobType}</Badge>
-                        </div>
-
-                        {application.salary && (
-                            <div className="flex items-center gap-2 text-gray-700">
-                                <DollarSign className="size-5 text-gray-400" />
-                                <span>{application.salary}</span>
+                    {/* Data Matrix */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className={sectionStyle}>
+                            <label className={labelStyle}>Location</label>
+                            <div className="flex items-center gap-2 font-black text-sm uppercase">
+                                <MapPin size={14} className="text-[#EBBB49]" />
+                                {application.location || "Remote_Node"}
                             </div>
-                        )}
-
-                        <div className="flex items-center gap-2 text-gray-500 text-sm">
-                            <Clock className="size-4" />
-                            <span>Added {safeFormat(application.dateAdded, 'MMM d, yyyy')}</span>
+                        </div>
+                        <div className={sectionStyle}>
+                            <label className={labelStyle}>Contract_Type</label>
+                            <div className="font-black text-sm uppercase">
+                                {application.jobType || "Internship"}
+                            </div>
                         </div>
                     </div>
 
-                    <Separator />
-
-                    {/* Dates */}
-                    <div className="space-y-3">
-                        <h4 className="font-medium text-gray-900">Important Dates</h4>
-
-                        {application.deadline && (
-                            <div className="flex items-center gap-2">
-                                <Calendar className="size-5 text-gray-400" />
-                                <div>
-                                    <p className="text-sm font-medium">Application Deadline</p>
-                                    <p className="text-sm text-gray-600">
-                                        {safeFormat(application.deadline, 'EEEE, MMMM d, yyyy')}
-                                    </p>
-                                </div>
+                    {/* Timeline */}
+                    <div className={sectionStyle}>
+                        <h4 className="font-black uppercase italic text-sm mb-4 border-b-2 border-zinc-100 pb-2 flex items-center gap-2">
+                            <Calendar size={16} className="text-[#EBBB49]" /> Event_Log
+                        </h4>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] font-black uppercase text-zinc-400">Initialized</span>
+                                <span className="text-xs font-bold">{safeFormat(application.dateAdded || application.created_at, 'MMM d, yyyy')}</span>
                             </div>
-                        )}
-
-                        {application.interviewDate && (
-                            <div className="flex items-center gap-2">
-                                <Calendar className="size-5 text-purple-500" />
-                                <div>
-                                    <p className="text-sm font-medium text-purple-700">Interview Scheduled</p>
-                                    <p className="text-sm text-purple-600">
-                                        {safeFormat(application.interviewDate, 'EEEE, MMMM d, yyyy')}
-                                    </p>
+                            {application.deadline && (
+                                <div className="flex justify-between items-center text-red-600">
+                                    <span className="text-[10px] font-black uppercase">Cutoff_Date</span>
+                                    <span className="text-xs font-black italic underline">{safeFormat(application.deadline, 'MMM d, yyyy')}</span>
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
 
-                    {application.resumeVersion && (
-                        <>
-                            <Separator />
-                            <div className="space-y-2">
-                                <h4 className="font-medium text-gray-900">Resume</h4>
-                                <div className="flex items-center gap-2 text-gray-700 bg-gray-50 p-3 rounded-lg">
-                                    <FileText className="size-5 text-gray-400" />
-                                    <span className="text-sm">{application.resumeVersion}</span>
-                                </div>
-                            </div>
-                        </>
-                    )}
-
+                    {/* Notes Field */}
                     {application.notes && (
-                        <>
-                            <Separator />
-                            <div className="space-y-2">
-                                <h4 className="font-medium text-gray-900">Notes</h4>
-                                <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-                                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                                        {application.notes}
-                                    </p>
-                                </div>
+                        <div>
+                            <label className={labelStyle}>Internal_Intelligence</label>
+                            <div className="bg-white border-2 border-zinc-900 p-4 shadow-[4px_4px_0px_0px_#EBBB49] font-bold text-sm leading-relaxed italic border-l-8">
+                                "{application.notes}"
                             </div>
-                        </>
+                        </div>
                     )}
 
-                    {application.jobUrl && (
-                        <>
-                            <Separator />
+                    {/* Action Panel */}
+                    <div className="space-y-3 pt-4">
+                        {application.jobUrl && (
                             <Button
-                                variant="outline"
-                                className="w-full"
                                 onClick={() => window.open(application.jobUrl, '_blank')}
+                                className="w-full bg-white text-zinc-900 border-2 border-zinc-900 rounded-none font-black uppercase italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
                             >
-                                <ExternalLink className="size-4 mr-2" />
-                                View Job Posting
+                                <ExternalLink size={16} className="mr-2" /> Open_Asset_Source
                             </Button>
-                        </>
-                    )}
+                        )}
 
-                    <Separator />
-
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1">
-                            <Edit className="size-4 mr-2" />
-                            Edit
-                        </Button>
-                        <Button
-                            variant="destructive"
-                            className="flex-1"
-                            onClick={() => {
-                                onDelete(application.id);
-                                onClose();
-                            }}
-                        >
-                            <Trash2 className="size-4 mr-2" />
-                            Delete
-                        </Button>
+                        <div className="flex gap-4">
+                            <Button variant="outline" className="flex-1 border-2 border-zinc-900 rounded-none font-black uppercase italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#EBBB49]">
+                                <Edit size={16} className="mr-2" /> Modify
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                className="flex-1 bg-red-600 border-2 border-zinc-900 rounded-none font-black uppercase italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-700"
+                                onClick={() => { onDelete(application.id); onClose(); }}
+                            >
+                                <Trash2 size={16} className="mr-2" /> Terminate
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </SheetContent>

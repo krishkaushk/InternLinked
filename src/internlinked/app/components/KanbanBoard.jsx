@@ -2,24 +2,22 @@ import { ApplicationCard } from './ApplicationCard';
 import { Plus } from 'lucide-react';
 import { Button } from '@/app/components/ui/button';
 import { useState } from 'react';
-
-// Removed: import { Application, ApplicationStatus } from '@/types';
-// Removed: interface KanbanBoardProps
+import { Trash2 } from 'lucide-react';
 
 const columns = [
-    { status: 'saved', title: 'Saved', color: 'bg-gray-50 border-gray-200' },
-    { status: 'applied', title: 'Applied', color: 'bg-blue-50 border-blue-200' },
-    { status: 'interview', title: 'Interview', color: 'bg-purple-50 border-purple-200' },
-    { status: 'offer', title: 'Offer', color: 'bg-green-50 border-green-200' },
-    { status: 'rejected', title: 'Rejected', color: 'bg-red-50 border-red-200' },
+    { status: 'saved', title: '01_SAVED' },
+    { status: 'applied', title: '02_APPLIED' },
+    { status: 'interview', title: '03_INTERVIEW' },
+    { status: 'offer', title: '04_OFFER' },
+    { status: 'rejected', title: '05_REJECTED' },
 ];
 
 export function KanbanBoard({
-                                applications,
-                                onUpdateStatus,
-                                onAddApplication,
-                                onSelectApplication
-                            }) {
+    applications,
+    onUpdateStatus,
+    onAddApplication,
+    onSelectApplication
+}) {
     const [draggedItem, setDraggedItem] = useState(null);
 
     const handleDragStart = (applicationId) => {
@@ -42,35 +40,36 @@ export function KanbanBoard({
     };
 
     return (
-        <div className="flex gap-4 h-full overflow-x-auto pb-4">
-            {columns.map((column) => {
+        <div className="flex h-full overflow-x-auto">
+            {columns.map((column, index) => {
                 const columnApps = getApplicationsByStatus(column.status);
                 return (
                     <div
                         key={column.status}
-                        className={`flex-1 min-w-[300px] ${column.color} rounded-lg border-2 p-4`}
+                        className={`flex-1 min-w-[280px] flex flex-col border-r border-zinc-200 last:border-r-0`}
                         onDragOver={handleDragOver}
                         onDrop={() => handleDrop(column.status)}
                     >
-                        {/* Column Header */}
-                        <div className="flex items-center justify-between mb-4">
+                        {/* Minimal Header */}
+                        <div className="p-4 flex items-center justify-between sticky top-0 bg-zinc-50/80 backdrop-blur-sm z-10">
                             <div className="flex items-center gap-2">
-                                <h3 className="font-semibold text-gray-900">{column.title}</h3>
-                                <span className="text-sm text-gray-500 bg-white px-2 py-0.5 rounded-full">
-                  {columnApps.length}
-                </span>
+                                <h3 className="font-black text-[10px] uppercase tracking-widest text-zinc-400">
+                                    {column.title}
+                                </h3>
+                                <span className="text-[9px] font-black text-zinc-900 px-1 border-b-2 border-zinc-900">
+                                    {columnApps.length}
+                                </span>
                             </div>
-                            <Button
-                                size="sm"
-                                variant="ghost"
+                            <button
                                 onClick={() => onAddApplication(column.status)}
-                                className="h-8 w-8 p-0"
+                                className="text-zinc-400 hover:text-zinc-900 transition-colors"
                             >
-                            </Button>
+                                <Plus className="size-4" />
+                            </button>
                         </div>
 
-                        {/* Cards */}
-                        <div className="space-y-3 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
+                        {/* Minimal Scrollable Area */}
+                        <div className="flex-1 px-3 space-y-3 overflow-y-auto pb-10">
                             {columnApps.map((app) => (
                                 <ApplicationCard
                                     key={app.id}
@@ -80,9 +79,10 @@ export function KanbanBoard({
                                     onClick={() => onSelectApplication(app)}
                                 />
                             ))}
+                            
                             {columnApps.length === 0 && (
-                                <div className="text-center py-8 text-gray-400 text-sm">
-                                    No applications yet
+                                <div className="py-10 text-center opacity-20 grayscale">
+                                    <p className="text-[9px] font-black uppercase tracking-tighter">Empty_Slot</p>
                                 </div>
                             )}
                         </div>

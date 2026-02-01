@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
-
-// Paths updated to match: src/internlinked/app/components/
 import SignIn from "./internlinked/app/components/SignIn";
 import { OnboardingFlow } from "./internlinked/app/components/OnboardingFlow"; 
 import InternLinkedApp from "./internlinked/app/InternLinkedApp";
@@ -13,27 +11,21 @@ const supabase = createClient(
 
 export default function App() {
     const [session, setSession] = useState(null);
-    const [profile, setProfile] = useState(null); // Track the DB profile
+    const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
   
     const fetchProfile = async (userId) => {
         setLoading(true);
-        
-        // Add a tiny 500ms delay to let the database "breathe" after the upsert
-        await new Promise(resolve => setTimeout(resolve, 500));
-    
         try {
             const { data, error } = await supabase
                 .from('profiles')
-                .select('onboarding_completed')
+                .select('*')
                 .eq('id', userId)
                 .single();
     
-            if (error) {
+            if (error || !data) {
                 setProfile({ onboarding_completed: false });
             } else {
-                // CRITICAL: Log this so you can see it in the F12 console
-                console.log("DB returned onboarding status:", data.onboarding_completed);
                 setProfile(data);
             }
         } catch (err) {
@@ -62,24 +54,22 @@ export default function App() {
       return () => subscription.unsubscribe();
     }, []);
   
-    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FDFCF0]">Initializing_System...</div>;
+    if (loading) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFCF0]">
+                <h1 className="text-2xl font-black italic mb-4 uppercase">
+                   <span className="text-black-600">Intern</span><span className="text-[#EBBB49]">Linked</span>
+                </h1>
+                <div className="text-[10px] font-black uppercase tracking-[0.3em] animate-pulse">Initializing_System...</div>
+            </div>
+        );
+    }
   
     if (!session) return <SignIn />;
 
-            // App.jsx
+    if (session && (!profile || profile.onboarding_completed === false)) {
+        return <OnboardingFlow onComplete={() => fetchProfile(session.user.id)} />;
+    }
 
-        // Change your onboarding check to this:
-        if (!loading && session) {
-            // If no profile exists yet, or onboarding isn't finished
-            if (!profile || profile.onboarding_completed === false) {
-                return (
-                    <OnboardingFlow 
-                        onComplete={() => fetchProfile(session.user.id)} 
-                    />
-                );
-            }
-        }
-
-        // Otherwise, show the dashboard
-        return <InternLinkedApp session={session} />;
-        }
+    return <InternLinkedApp session={session} />;
+}
