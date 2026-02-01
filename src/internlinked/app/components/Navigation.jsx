@@ -1,127 +1,74 @@
-import {
-    LayoutDashboard,
-    Briefcase,
-    User,
-    Trophy,
-    Menu,
-    X,
-    Target
-} from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
-import { useState } from 'react';
+import React from 'react';
+import { LayoutGrid, Target, Briefcase, User } from 'lucide-react';
 
-// Removed: type NavItem
-// Removed: interface NavigationProps
-
-const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'job-matches', label: 'Job Matches', icon: Target },
-    { id: 'applications', label: 'Applications', icon: Briefcase },
-    { id: 'profile', label: 'Profile', icon: User },
-];
-
+/**
+ * Navigation Component (Yellow Retro Version)
+ * FIXED: Prop names now match InternLinkedApp.jsx
+ */
+// 1. Change 'onTabChange' to 'onViewChange' to match the parent
 export function Navigation({ currentView, onViewChange, userStats }) {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const { level, xp, xpToNextLevel } = userStats;
+    const progressPercentage = (xp / xpToNextLevel) * 100;
 
-    const NavContent = () => (
-        <>
-            {/* Logo & Level */}
-            <div className="p-6 border-b">
+    const menuItems = [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
+        { id: 'matches', label: 'Job_Matches', icon: Target },
+        { id: 'applications', label: 'Applications', icon: Briefcase },
+        { id: 'profile', label: 'Profile', icon: User },
+    ];
+
+    return (
+        <div className="w-64 h-full bg-white border-r-4 border-zinc-900 flex flex-col shadow-[4px_0px_0px_0px_rgba(0,0,0,1)]">
+            {/* Header & XP Section */}
+            <div className="p-6 border-b-4 border-zinc-900">
                 <div className="flex items-center gap-3 mb-4">
-                    <div className="size-10 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                        <Trophy className="size-6 text-white" />
+                    <div className="bg-[#EBBB49] border-2 border-zinc-900 p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <User className="text-zinc-900 size-5" strokeWidth={3} />
                     </div>
                     <div>
-                        <h2 className="font-bold text-lg">InternLinked</h2>
-                        <p className="text-xs text-gray-500">Level {userStats?.level || 1}</p>
+                        <h2 className="font-black uppercase text-sm italic leading-none">Intern_Linked</h2>
+                        <span className="text-[10px] font-bold uppercase text-zinc-500">Level_{level}</span>
                     </div>
                 </div>
 
-                {/* XP Progress */}
+                {/* Yellow XP Bar */}
                 <div className="space-y-1">
-                    <div className="flex justify-between text-xs text-gray-600">
-                        <span>{userStats?.xp || 0} XP</span>
-                        <span>{userStats?.xpToNextLevel || 100} XP</span>
+                    <div className="flex justify-between text-[9px] font-black uppercase">
+                        <span>{xp} XP</span>
+                        <span>{xpToNextLevel} XP</span>
                     </div>
-                    <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div className="h-4 border-2 border-zinc-900 bg-white p-0.5">
                         <div
-                            className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all"
-                            style={{
-                                width: `${((userStats?.xp || 0) / (userStats?.xpToNextLevel || 100)) * 100}%`,
-                            }}
+                            className="h-full bg-[#EBBB49] border-r-2 border-zinc-900 transition-all duration-500"
+                            style={{ width: `${progressPercentage}%` }}
                         />
                     </div>
                 </div>
             </div>
 
-            {/* Navigation Items */}
-            <nav className="p-3 space-y-1">
-                {navItems.map((item) => {
+            {/* Menu Items */}
+            <nav className="flex-1 p-4 space-y-3">
+                {menuItems.map((item) => {
                     const Icon = item.icon;
+                    // 2. Use 'currentView' instead of 'activeTab'
                     const isActive = currentView === item.id;
-
                     return (
                         <button
                             key={item.id}
-                            onClick={() => {
-                                onViewChange(item.id);
-                                setIsMobileMenuOpen(false);
-                            }}
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
-                                isActive
-                                    ? 'bg-purple-50 text-purple-700 font-medium'
-                                    : 'text-gray-700 hover:bg-gray-50'
+                            // 3. Call 'onViewChange' instead of 'onTabChange'
+                            onClick={() => onViewChange(item.id)}
+                            className={`w-full flex items-center gap-4 p-3 font-black uppercase text-xs border-2 transition-all
+                                ${isActive
+                                ? 'bg-[#EBBB49] text-zinc-900 border-zinc-900 translate-x-[2px] translate-y-[2px] shadow-none'
+                                : 'bg-white text-zinc-900 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none'
                             }`}
                         >
-                            <Icon className="size-5" />
-                            <span>{item.label}</span>
+                            <Icon size={18} strokeWidth={3} />
+                            {item.label}
                         </button>
                     );
                 })}
             </nav>
-        </>
-    );
-
-    return (
-        <>
-            {/* Mobile Header */}
-            <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b z-40 flex items-center justify-between px-4">
-                <div className="flex items-center gap-2">
-                    <div className="size-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-                        <Trophy className="size-4 text-white" />
-                    </div>
-                    <span className="font-bold">InternLinked</span>
-                </div>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                >
-                    {isMobileMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
-                </Button>
-            </div>
-
-            {/* Mobile Menu Overlay */}
-            {isMobileMenuOpen && (
-                <div
-                    className="lg:hidden fixed inset-0 bg-black/50 z-40 mt-16"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                />
-            )}
-
-            {/* Desktop Sidebar */}
-            <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64 bg-white border-r">
-                <NavContent />
-            </aside>
-
-            {/* Mobile Sidebar */}
-            <aside
-                className={`lg:hidden fixed inset-y-0 left-0 w-64 bg-white border-r z-50 transform transition-transform duration-200 mt-16 ${
-                    isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
-                }`}
-            >
-                <NavContent />
-            </aside>
-        </>
+        </div>
     );
 }

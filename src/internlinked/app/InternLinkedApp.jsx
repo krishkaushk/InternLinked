@@ -7,7 +7,6 @@ import { ProfileView } from "./components/ProfileView";
 import { JobMatches } from "./components/JobMatches";
 import { mockActivities, mockBadges } from "../data/mockData";
 import { Toaster } from "./components/ui/sonner";
-import { LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { calculateUserProgress } from '../utils/gamification';
 
@@ -44,7 +43,7 @@ export default function InternLinkedApp({ session }) {
                     cv_url: app.cv_url || app.resume_url
                 }));
                 setApplications(mappedApps);
-                
+
                 const progress = calculateUserProgress(mappedApps, mockActivities, mockBadges);
                 setUserStats(prev => ({
                     ...prev, ...progress,
@@ -56,19 +55,19 @@ export default function InternLinkedApp({ session }) {
         fetchInitialData();
     }, []);
 
-    // --- UPDATED HANDLER TO SUPPORT DELETE ---
     const handleUpdateApplications = async (updatedData, deletedId) => {
-        // 1. Handle Deletion logic
         if (deletedId) {
-            setApplications(prev => prev.filter(app => app.id !== deletedId));
-            // Recalculate stats after deletion
+            const { error } = await supabase.from('applications').delete().eq('id', deletedId);
+            if (error) return toast.error(error.message);
+
             const updatedApps = applications.filter(app => app.id !== deletedId);
+            setApplications(updatedApps);
             const progress = calculateUserProgress(updatedApps, mockActivities, mockBadges);
             setUserStats(prev => ({ ...prev, ...progress, totalApplications: updatedApps.length }));
-            return; 
+            toast.success("ENTRY_DELETED");
+            return;
         }
 
-        // 2. Handle Insert/Update logic
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
@@ -76,35 +75,30 @@ export default function InternLinkedApp({ session }) {
 
         const dbPayload = {
             user_id: user.id,
-            company: updatedData.companyName,
             companyName: updatedData.companyName,
-            role: updatedData.position,
             position: updatedData.position,
             status: updatedData.status,
             notes: updatedData.notes,
-            resume_url: updatedData.cv_url,
             cv_url: updatedData.cv_url,
-            job_type: updatedData.jobType,
             jobType: updatedData.jobType,
-            job_url: updatedData.jobUrl,
-            jobUrl: updatedData.jobUrl 
+            jobUrl: updatedData.jobUrl
         };
 
         if (isEditing) {
             const { error } = await supabase.from('applications').update(dbPayload).eq('id', updatedData.id);
             if (error) return toast.error(error.message);
-            
+
             setApplications(apps => apps.map(a => a.id === updatedData.id ? { ...a, ...updatedData } : a));
             toast.success("RECORD_UPDATED");
         } else {
             const { data, error } = await supabase.from('applications').insert([dbPayload]).select();
             if (error) return toast.error(error.message);
-            
-            const newApp = { 
-                ...data[0], 
-                companyName: data[0].companyName || data[0].company, 
-                position: data[0].position || data[0].role, 
-                cv_url: data[0].cv_url || data[0].resume_url 
+
+            const newApp = {
+                ...data[0],
+                companyName: data[0].companyName,
+                position: data[0].position,
+                cv_url: data[0].cv_url
             };
             setApplications(prev => [newApp, ...prev]);
             toast.success("ENTRY_INITIALIZED");
@@ -121,19 +115,31 @@ export default function InternLinkedApp({ session }) {
     };
 
     return (
-        <div className="min-h-screen bg-[#FDFCF0] font-sans">
+        /* FIX: Changed to flex-row and h-screen to lock sidebar height */
+        <div className="flex h-screen w-full bg-[#FCFBF4] overflow-hidden">
+            {/* Navigation component spans 100% height */}
             <Navigation currentView={currentView} onViewChange={setCurrentView} userStats={userStats} />
-            <main className="lg:pl-64">
-                <div className="bg-white border-b-2 border-zinc-900 px-6 py-4 flex justify-between items-center">
+
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+                {/* Header Section */}
+                <div className="bg-white border-b-4 border-zinc-900 px-6 py-4 flex justify-between items-center z-10">
                     <h1 className="text-4xl font-black italic tracking-tighter uppercase">
-                        <span className="text-black-600">Intern</span><span className="text-[#EBBB49]">Linked</span>
+                        <span>Intern</span><span className="text-[#EBBB49]">Linked</span>
                     </h1>
-                    <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-[10px] font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all hover:bg-zinc-800">
+                    <button
+                        onClick={() => supabase.auth.signOut()}
+                        className="px-4 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-[10px] font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all hover:bg-zinc-800"
+                    >
                         Exit_Session
                     </button>
                 </div>
-                <div className="p-6 lg:p-8">{renderView()}</div>
+
+                {/* Scrollable View Area */}
+                <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+                    {renderView()}
+                </div>
             </main>
+
             <Toaster position="bottom-right" toastOptions={{ className: 'rounded-none border-2 border-zinc-900 font-bold uppercase text-[10px]' }} />
         </div>
     );
