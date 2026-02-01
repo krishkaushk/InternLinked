@@ -1,8 +1,6 @@
 import { ApplicationCard } from './ApplicationCard';
 import { Plus } from 'lucide-react';
-import { Button } from '@/app/components/ui/button';
 import { useState } from 'react';
-import { Trash2 } from 'lucide-react';
 
 const columns = [
     { status: 'saved', title: '01_SAVED' },
@@ -16,7 +14,8 @@ export function KanbanBoard({
     applications,
     onUpdateStatus,
     onAddApplication,
-    onSelectApplication
+    onSelectApplication,
+    onOpenDrawer // Added prop to handle the Asset Vault
 }) {
     const [draggedItem, setDraggedItem] = useState(null);
 
@@ -30,7 +29,11 @@ export function KanbanBoard({
 
     const handleDrop = (status) => {
         if (draggedItem) {
-            onUpdateStatus(draggedItem, status);
+            // Check if status actually changed to prevent redundant updates
+            const app = applications.find(a => a.id === draggedItem);
+            if (app && app.status !== status) {
+                onUpdateStatus(draggedItem, status);
+            }
             setDraggedItem(null);
         }
     };
@@ -40,36 +43,37 @@ export function KanbanBoard({
     };
 
     return (
-        <div className="flex h-full overflow-x-auto">
-            {columns.map((column, index) => {
+        <div className="flex h-full overflow-x-auto gap-0">
+            {columns.map((column) => {
                 const columnApps = getApplicationsByStatus(column.status);
                 return (
                     <div
                         key={column.status}
-                        className={`flex-1 min-w-[280px] flex flex-col border-r border-zinc-200 last:border-r-0`}
+                        className="flex-1 min-w-[300px] flex flex-col border-r-2 border-zinc-900 last:border-r-0 bg-transparent"
                         onDragOver={handleDragOver}
                         onDrop={() => handleDrop(column.status)}
                     >
-                        {/* Minimal Header */}
-                        <div className="p-4 flex items-center justify-between sticky top-0 bg-zinc-50/80 backdrop-blur-sm z-10">
+                        {/* Column Header */}
+                        <div className="p-4 flex items-center justify-between sticky top-0 bg-zinc-50 z-10 border-b-2 border-zinc-900">
                             <div className="flex items-center gap-2">
-                                <h3 className="font-black text-[10px] uppercase tracking-widest text-zinc-400">
+                                <h3 className="font-black text-[10px] uppercase tracking-[0.2em] text-zinc-900">
                                     {column.title}
                                 </h3>
-                                <span className="text-[9px] font-black text-zinc-900 px-1 border-b-2 border-zinc-900">
+                                <div className="bg-zinc-900 text-[#EBBB49] px-2 py-0.5 text-[10px] font-black italic shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                                     {columnApps.length}
-                                </span>
+                                </div>
                             </div>
                             <button
-                                onClick={() => onAddApplication(column.status)}
-                                className="text-zinc-400 hover:text-zinc-900 transition-colors"
+                                onClick={() => onAddApplication?.(column.status)}
+                                className="p-1 hover:bg-[#EBBB49] border-2 border-transparent hover:border-zinc-900 transition-all"
+                                title="Quick Add"
                             >
-                                <Plus className="size-4" />
+                                <Plus className="size-4 stroke-[3px]" />
                             </button>
                         </div>
 
-                        {/* Minimal Scrollable Area */}
-                        <div className="flex-1 px-3 space-y-3 overflow-y-auto pb-10">
+                        {/* Drop Zone / Content Area */}
+                        <div className={`flex-1 px-3 py-4 space-y-4 overflow-y-auto pb-20 transition-colors ${draggedItem ? 'bg-[#EBBB49]/5' : ''}`}>
                             {columnApps.map((app) => (
                                 <ApplicationCard
                                     key={app.id}
@@ -77,12 +81,15 @@ export function KanbanBoard({
                                     onDragStart={() => handleDragStart(app.id)}
                                     onDragEnd={() => setDraggedItem(null)}
                                     onClick={() => onSelectApplication(app)}
+                                    onOpenDrawer={onOpenDrawer} // Passing the drawer function to the card
                                 />
                             ))}
                             
                             {columnApps.length === 0 && (
-                                <div className="py-10 text-center opacity-20 grayscale">
-                                    <p className="text-[9px] font-black uppercase tracking-tighter">Empty_Slot</p>
+                                <div className="py-20 text-center border-2 border-dashed border-zinc-200 group">
+                                    <p className="text-[9px] font-black uppercase tracking-widest text-zinc-300 group-hover:text-zinc-400 transition-colors italic">
+                                        Empty_Node
+                                    </p>
                                 </div>
                             )}
                         </div>
