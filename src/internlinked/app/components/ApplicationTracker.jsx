@@ -4,11 +4,37 @@ import { ApplicationTable } from './ApplicationTable';
 import { Button } from '@/app/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Plus, LayoutGrid, Table as TableIcon, X } from 'lucide-react';
+import { createClient } from "@supabase/supabase-js";
+
+
+const supabase = createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 export function ApplicationTracker({ applications, onUpdateApplications }) {
     const [view, setView] = useState('kanban');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
 
+    const [cvFile, setCvFile] = useState(null);
+
+    // 1. Add state for the application being edited
+    const [selectedApp, setSelectedApp] = useState(null);
+
+    // 2. Add a function to handle selection
+    const handleEditClick = (app) => {
+        setSelectedApp(app);
+        setFormData({
+            companyName: app.companyName || app.company_name,
+            position: app.position,
+            status: app.status,
+            jobType: app.jobType || 'internship',
+            jobUrl: app.jobUrl || '',
+            notes: app.notes || '',
+            cv_url: app.cv_url || null // Preserve the existing link here
+        });
+        setIsAddDialogOpen(true);
+    };
     const [formData, setFormData] = useState({
         companyName: '',
         position: '',
@@ -18,20 +44,56 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
         notes: ''
     });
 
-    const handleAddApplication = (e) => {
+
+
+
+    const uploadResume = async (file, appId) => {
+        if (!file) return null;
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${appId}-CV.${fileExt}`;
+        const filePath = `cvs/${fileName}`; // Changed bucket to 'cvs'
+
+        const { error: uploadError } = await supabase.storage
+            .from('cvs') // Ensure this matches your Supabase bucket name
+            .upload(filePath, file);
+
+        if (uploadError) {
+            console.error("Upload error:", uploadError.message);
+            return null;
+        }
+
+        const { data } = supabase.storage.from('cvs').getPublicUrl(filePath);
+        return data.publicUrl;
+    };
+
+
+    const handleAddApplication = async (e) => {
         e.preventDefault();
 
-        const newApp = {
-            id: `app-${Date.now()}`,
+        let finalCvUrl = formData.cv_url; // Default to the existing URL
+        const appId = selectedApp?.id || `app-${Date.now()}`;
+
+        // Only upload if a NEW file was selected
+        if (cvFile) {
+            finalCvUrl = await uploadResume(cvFile, appId);
+        }
+
+        const appData = {
+            id: appId,
             ...formData,
-            dateAdded: new Date(),
-            matchScore: 85
+            cv_url: finalCvUrl, // Use the new one OR keep the old one
+            dateAdded: selectedApp?.dateAdded || new Date(),
+            matchScore: selectedApp?.matchScore || 85
         };
 
-        // This ensures the new job appears in the Kanban board immediately
-        onUpdateApplications([...applications, newApp]);
+        // Send to your main update function (InternLinkedApp.jsx)
+        onUpdateApplications(appData);
 
-        setFormData({ companyName: '', position: '', status: 'saved', jobType: 'internship', jobUrl: '', notes: '' });
+        // Reset everything
+        setFormData({ companyName: '', position: '', status: 'saved', jobType: 'internship', jobUrl: '', notes: '', cv_url: null });
+        setCvFile(null);
+        setSelectedApp(null);
         setIsAddDialogOpen(false);
     };
 
@@ -65,10 +127,13 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             {/* 2. Content: The new application will now show up here */}
             <div className="flex-1 overflow-hidden">
                 {view === 'kanban' ? (
-                    <KanbanBoard applications={applications} />
+                    <KanbanBoard
+                        applications={applications}
+                        onSelectApplication={handleEditClick} // <--- DOUBLE CHECK THIS NAME
+                    />
                 ) : (
                     <ApplicationTable applications={applications} />
-                )}
+                    )}
             </div>
 
             {/* Modal */}
@@ -102,6 +167,16 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                                         <option value="offer">Offer</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-black uppercase mb-1">Upload_CV (Optional)</label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.doc,.docx"
+                                    className="w-full border-2 border-zinc-900 p-2 outline-none bg-white file:mr-4 file:py-1 file:px-4 file:border-0 file:text-xs file:font-black file:uppercase file:bg-zinc-900 file:text-white hover:file:bg-[#800050] cursor-pointer"
+                                    onChange={(e) => setCvFile(e.target.files[0])}
+                                />
                             </div>
 
                             <div className="space-y-4">
