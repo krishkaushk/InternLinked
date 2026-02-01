@@ -23,7 +23,7 @@ export function Navigation({ currentView, onViewChange, userStats }) {
                         <User className="text-zinc-900 size-5" strokeWidth={3} />
                     </div>
                     <div>
-                        <h2 className="font-black uppercase text-sm italic leading-none">Intern_Linked</h2>
+                        <h2 className="font-black uppercase text-sm leading-none">Krish Kaushik</h2>
                         <span className="text-[10px] font-bold uppercase text-zinc-500">Level_{level}</span>
                     </div>
                 </div>
