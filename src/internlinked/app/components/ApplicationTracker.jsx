@@ -31,6 +31,28 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
     const inputStyle = "w-full border-2 border-zinc-900 p-2 outline-none focus:bg-yellow-50 focus:ring-2 ring-[#EBBB49] transition-all rounded-none font-bold text-sm";
     const labelStyle = "block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-500";
 
+    const handleDownloadAsset = async (fileUrl, fileName) => {
+        if (!fileUrl) return toast.error("NO_ASSET_LINKED");
+        
+        try {
+            const response = await fetch(fileUrl);
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            // Forces the file to download with a clean name
+            link.setAttribute('download', fileName || 'resume_asset.pdf');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+            toast.success("DOWNLOAD_INITIALIZED");
+        } catch (error) {
+            console.error("Download Error:", error);
+            toast.error("DOWNLOAD_FAILURE");
+        }
+    };
+
     const handleEditClick = (app) => {
         setSelectedApp(app);
         setFormData({
@@ -44,6 +66,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
         });
         setIsAddDialogOpen(true);
     };
+
 
     const closeModal = () => {
         setFormData({ companyName: '', position: '', status: 'saved', jobType: 'internship', jobUrl: '', notes: '', cv_url: null });
