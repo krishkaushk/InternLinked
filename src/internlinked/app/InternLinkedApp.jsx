@@ -87,64 +87,49 @@ export default function InternLinkedApp({ session }) {
         ), { duration: 4000 });
     };
 
-    const handleUpdateApplications = async (updatedData, deletedId) => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        let finalApps = [...applications];
-
+    const handleUpdateApplications = (updatedData, deletedId) => {
+        // 1. HANDLE DELETION
         if (deletedId) {
-            const { error } = await supabase.from('applications').delete().eq('id', deletedId);
-            if (error) return toast.error(error.message);
-            finalApps = applications.filter(app => app.id !== deletedId);
-        } else {
-            const isEditing = updatedData.id && applications.some(a => a.id === updatedData.id);
-            const dbPayload = {
-                user_id: user.id,
-                companyName: updatedData.companyName,
-                position: updatedData.position,
-                status: updatedData.status,
-                cv_url: updatedData.cv_url,
-                jobType: updatedData.jobType,
-                jobUrl: updatedData.jobUrl
-            };
-
-            if (isEditing) {
-                const { error } = await supabase.from('applications').update(dbPayload).eq('id', updatedData.id);
-                if (error) return toast.error(error.message);
-                finalApps = applications.map(a => a.id === updatedData.id ? { ...a, ...updatedData } : a);
-            } else {
-                const { data, error } = await supabase.from('applications').insert([dbPayload]).select();
-                if (error) return toast.error(error.message);
-                const newApp = { ...data[0], companyName: data[0].companyName, position: data[0].position };
-                finalApps = [newApp, ...applications];
-            }
-        }
-
-        // 1. Calculate new progress with fast Level 1 scaling
-        const progress = calculateUserProgress(finalApps, mockActivities, mockBadges);
-
-        // 2. PERSIST PROGRESS TO SUPABASE
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-                id: user.id,
-                xp: progress.xp,
-                level: progress.level,
-                current_streak: progress.currentStreak,
-                last_activity_date: new Date().toISOString()
+            setApplications(prev => {
+                const newApps = prev.filter(app => app.id !== deletedId);
+                // Re-calculate stats based on the new list
+                const progress = calculateUserProgress(newApps, mockActivities, mockBadges);
+                setUserStats(prevStats => ({ 
+                    ...prevStats, 
+                    ...progress, 
+                    totalApplications: newApps.length 
+                }));
+                return newApps;
             });
-
-        if (!profileError) {
-            // Check for level up before updating state
-            if (progress.level > userStats.level) {
-                triggerLevelUpAnimation(progress.level);
-            }
-
-            setApplications(finalApps);
-            setUserStats(prev => ({ ...prev, ...progress, totalApplications: finalApps.length }));
-            toast.success(deletedId ? "ENTRY_DELETED" : "XP_SYNCED_SUCCESSFULLY");
+            return;
         }
+    
+        // 2. HANDLE ADD / UPDATE
+        // We treat both the same way: remove old version (if any), add new version
+        setApplications(prev => {
+            // Find if it exists and remove it to prevent duplicates
+            const filtered = prev.filter(app => app.id !== updatedData.id);
+            
+            // Map the data to ensure consistency across the app
+            const formattedApp = {
+                ...updatedData,
+                companyName: updatedData.companyName || updatedData.company,
+                position: updatedData.position || updatedData.role,
+                cv_url: updatedData.cv_url || updatedData.resume_url
+            };
+    
+            const newAppsList = [formattedApp, ...filtered];
+            
+            // Update stats immediately
+            const progress = calculateUserProgress(newAppsList, mockActivities, mockBadges);
+            setUserStats(prevStats => ({ 
+                ...prevStats, 
+                ...progress, 
+                totalApplications: newAppsList.length 
+            }));
+    
+            return newAppsList;
+        });
     };
 
     const renderView = () => {
