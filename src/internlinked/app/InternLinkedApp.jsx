@@ -19,27 +19,16 @@ const supabase = createClient(
 );
 
 export default function InternLinkedApp({ session }) {
-    useEffect(() => {
-        // Check if level has actually increased from the initial state
-        if (userStats.level > 1) {
-            toast.success("LEVEL UP!", {
-                description: `You've reached Level ${userStats.level}! Keep applying to earn more XP.`,
-                icon: "🎉",
-                duration: 5000,
-            });
-        }
-    }, [userStats.level]);
-
     const [currentView, setCurrentView] = useState('dashboard');
-
-    // 1. Initialize applications with mock data so progress can be calculated
     const [applications, setApplications] = useState(mockApplications);
     const [profile, setProfile] = useState(null);
 
-    // 2. Initialize userStats dynamically using your new logic
+    // 1. Calculate the progress first into a SEPARATE variable
     const initialProgress = calculateUserProgress(mockApplications, mockActivities, mockBadges);
+
+    // 2. Use that variable to initialize your state
     const [userStats, setUserStats] = useState({
-        ...mockUserStats,
+        ...mockUserStats, // Use the IMPORTED mockUserStats, not the local state variable
         ...initialProgress,
         totalApplications: mockApplications.length
     });
@@ -48,18 +37,38 @@ export default function InternLinkedApp({ session }) {
         await supabase.auth.signOut();
     };
 
-    const handleUpdateApplications = (updatedApplications) => {
-        // 3. Update the applications list
-        setApplications(updatedApplications);
+    const handleUpdateApplications = async (newJob) => {
+        // 1. Get the current user's ID
+        const { data: { user } } = await supabase.auth.getUser();
 
-        // 4. Recalculate progress whenever applications change
-        const newProgress = calculateUserProgress(updatedApplications, mockActivities, mockBadges);
+        // 2. Insert the new job into your 'applications' table
+        const { data, error } = await supabase
+            .from('applications')
+            .insert([
+                {
+                    user_id: user.id,
+                    company_name: newJob.companyName,
+                    position: newJob.position,
+                    status: 'applied',
+                    match_score: newJob.matchScore || 0
+                }
+            ])
+            .select();
+
+        if (error) {
+            console.error("Error saving job:", error.message);
+            return;
+        }
+
+        // 3. Update the local state so the Level System reacts
+        const updatedList = [...applications, data[0]];
+        setApplications(updatedList);
+
+        // This triggers your 'Level Up' toast automatically!
+        const newProgress = calculateUserProgress(updatedList, mockActivities, mockBadges);
         setUserStats(prev => ({
             ...prev,
-            ...newProgress,
-            totalApplications: updatedApplications.length,
-            interviewsScheduled: updatedApplications.filter(a => a.status === 'interview').length,
-            offersReceived: updatedApplications.filter(a => a.status === 'offered').length,
+            ...newProgress
         }));
     };
 
