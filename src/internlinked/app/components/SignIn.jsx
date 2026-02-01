@@ -51,9 +51,8 @@ export default function SignIn() {
             <X size={14} className="cursor-pointer hover:text-primary transition-colors" />
           </div>
         </div>
-
+    
         {/* Form Content */}
-        //INTERNLINKED COLOUR
 
         <div className="p-8">
           <div className="mb-10 text-left border-b-2 border-zinc-100 pb-4">
