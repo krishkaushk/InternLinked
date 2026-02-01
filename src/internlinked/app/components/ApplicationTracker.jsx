@@ -116,18 +116,16 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             if (appError) throw appError;
     
             // 3. GAMIFICATION (Only for brand new entries)
-            // 1. In your handleAddApplication try block, update the gamification section:
             if (!selectedApp) {
                 const { data: profile } = await supabase
                     .from('profiles')
                     .select('xp, streak, last_activity')
                     .eq('id', user.id)
                     .single();
-
+    
                 const today = new Date().toISOString().split('T')[0];
                 let newStreak = (profile?.streak || 0);
                 
-                // Streak logic logic
                 if (profile?.last_activity) {
                     const yesterday = new Date();
                     yesterday.setDate(yesterday.getDate() - 1);
@@ -137,22 +135,13 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 } else {
                     newStreak = 1;
                 }
-
-                const { data: updatedProfile } = await supabase
+    
+                await supabase
                     .from('profiles')
                     .update({ xp: (profile?.xp || 0) + 100, streak: newStreak, last_activity: today })
-                    .eq('id', user.id)
-                    .select()
-                    .single();
-
-                // NEW: If you have an onUpdateProfile prop, call it here
-                if (onUpdateProfile && updatedProfile) {
-                    onUpdateProfile(updatedProfile);
-                }
-                
-                toast.success(`+100 XP // STREAK: ${newStreak}_DAYS`);
+                    .eq('id', user.id);
             }
-                
+    
             // 4. ASSET UPLOAD STACK
             let finalAppData = { ...appData };
             
