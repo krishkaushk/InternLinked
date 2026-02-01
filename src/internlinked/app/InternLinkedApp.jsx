@@ -1,17 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from "@supabase/supabase-js";
 import { Navigation } from "./components/Navigation";
 import { SimpleDashboard } from "./components/SimpleDashboard";
 import { ApplicationTracker } from "./components/ApplicationTracker";
 import { ProfileView } from "./components/ProfileView";
 import { JobMatches } from "./components/JobMatches";
-import { mockUserStats, mockApplications, mockActivities, mockBadges } from "../data/mockData"; // Added these to imports
+import { mockUserStats, mockActivities, mockBadges } from "../data/mockData";
 import { Toaster } from "./components/ui/sonner";
 import { LogOut } from "lucide-react";
-import { calculateUserProgress } from '../utils/gamification';
-import { useEffect } from 'react'; // Add useEffect to your React imports
-import { toast } from "sonner";    // Import toast from sonner
-
+import { toast } from "sonner";
+import { calculateUserProgress, calculateNewStreak } from '../utils/gamification';
 
 const supabase = createClient(
     import.meta.env.VITE_SUPABASE_URL,
@@ -19,62 +17,128 @@ const supabase = createClient(
 );
 
 export default function InternLinkedApp({ session }) {
+    // 1. Initialize all required states correctly
     const [currentView, setCurrentView] = useState('dashboard');
-    const [applications, setApplications] = useState(mockApplications);
+    const [applications, setApplications] = useState([]);
     const [profile, setProfile] = useState(null);
-
-    // 1. Calculate the progress first into a SEPARATE variable
-    const initialProgress = calculateUserProgress(mockApplications, mockActivities, mockBadges);
-
-    // 2. Use that variable to initialize your state
     const [userStats, setUserStats] = useState({
-        ...mockUserStats, // Use the IMPORTED mockUserStats, not the local state variable
-        ...initialProgress,
-        totalApplications: mockApplications.length
+        level: 1,
+        xp: 0,
+        xpToNextLevel: 500,
+        currentStreak: 0,
+        longestStreak: 0,
+        totalApplications: 0,
+        interviewsScheduled: 0,
+        offersReceived: 0,
+        badges: [],
+        lastActivityDate: null
     });
+
+    // 2. Fetch initial data from Supabase on load
+    useEffect(() => {
+        const fetchInitialData = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return;
+
+            // Fetch applications
+            const { data: apps } = await supabase
+                .from('applications')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            // Fetch profile for streak data
+            const { data: profileData } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (apps) {
+                setApplications(apps);
+                const progress = calculateUserProgress(apps, mockActivities, mockBadges);
+                setUserStats(prev => ({
+                    ...prev,
+                    ...progress,
+                    totalApplications: apps.length,
+                    currentStreak: profileData?.current_streak || 0,
+                    lastActivityDate: profileData?.last_activity_date || null
+                }));
+            }
+        };
+        fetchInitialData();
+    }, []);
+
+    // 3. Trigger Level Up toast when level increases
+    useEffect(() => {
+        if (userStats.level > 1) {
+            toast.success("LEVEL UP!", {
+                description: `You've reached Level ${userStats.level}!`,
+                icon: "🎉",
+            });
+        }
+    }, [userStats.level]);
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
     };
 
-    const handleUpdateApplications = async (newJob) => {
-        // 1. Get the current user's ID
+    const handleUpdateApplications = async (newJobOrList) => {
         const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
 
-        // 2. Insert the new job into your 'applications' table
-        const { data, error } = await supabase
-            .from('applications')
-            .insert([
-                {
-                    user_id: user.id,
-                    company_name: newJob.companyName,
-                    position: newJob.position,
-                    status: 'applied',
-                    match_score: newJob.matchScore || 0
-                }
-            ])
-            .select();
+        let updatedList;
+        let newJobToInsert = null;
 
-        if (error) {
-            console.error("Error saving job:", error.message);
-            return;
+        if (Array.isArray(newJobOrList)) {
+            updatedList = newJobOrList;
+        } else {
+            updatedList = [...applications, newJobOrList];
+            newJobToInsert = newJobOrList;
         }
 
-        // 3. Update the local state so the Level System reacts
-        const updatedList = [...applications, data[0]];
-        setApplications(updatedList);
+        // 4. Save to Supabase
+        if (newJobToInsert) {
+            const { error: insertError } = await supabase
+                .from('applications')
+                .insert([{
+                    user_id: user.id,
+                    company_name: newJobToInsert.companyName,
+                    position: newJobToInsert.position,
+                    status: newJobToInsert.status || 'saved',
+                    job_type: newJobToInsert.jobType || 'internship',
+                    notes: newJobToInsert.notes || '',
+                    job_url: newJobToInsert.jobUrl || ''
+                }]);
 
-        // This triggers your 'Level Up' toast automatically!
+            if (insertError) {
+                console.error("Supabase Insert Failed:", insertError.message);
+                return;
+            }
+
+            // 5. Update Streak logic
+            const updatedStreak = calculateNewStreak(userStats.lastActivityDate, userStats.currentStreak);
+            await supabase
+                .from('profiles')
+                .update({
+                    current_streak: updatedStreak,
+                    last_activity_date: new Date().toISOString().split('T')[0]
+                })
+                .eq('id', user.id);
+        }
+
+        // 6. Final State Sync
+        setApplications(updatedList);
         const newProgress = calculateUserProgress(updatedList, mockActivities, mockBadges);
         setUserStats(prev => ({
             ...prev,
-            ...newProgress
+            ...newProgress,
+            totalApplications: updatedList.length
         }));
     };
 
     const renderView = () => {
         switch (currentView) {
-            case 'dashboard': return <SimpleDashboard userStats={userStats} activities={mockActivities} />; // Pass activities to dashboard
+            case 'dashboard': return <SimpleDashboard userStats={userStats} activities={mockActivities} />;
             case 'job-matches': return <JobMatches profile={profile} />;
             case 'applications': return <ApplicationTracker applications={applications} onUpdateApplications={handleUpdateApplications} />;
             case 'profile': return profile ? <ProfileView profile={profile} onUpdateProfile={setProfile} /> : null;
