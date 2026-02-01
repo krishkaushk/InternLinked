@@ -89,8 +89,9 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
         e.preventDefault();
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return toast.error("Log in required");
-
+    
         try {
+            // --- 1. DEPLOY APPLICATION RECORD ---
             const appPayload = {
                 user_id: user.id,
                 companyName: formData.companyName,
@@ -102,25 +103,66 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 jobType: formData.jobType,
                 notes: formData.notes
             };
-
+    
             if (selectedApp?.id) appPayload.id = selectedApp.id;
-
+    
             const { data: appData, error: appError } = await supabase
                 .from('applications')
                 .upsert([appPayload])
                 .select().single();
-
+    
             if (appError) throw appError;
-
+    
+            // --- 2. GAMIFICATION ENGINE (+100 XP & STREAK) ---
+            // Only trigger points for NEW entries, not edits
+            if (!selectedApp) {
+                const { data: profile } = await supabase
+                    .from('profiles')
+                    .select('xp, streak, last_activity')
+                    .eq('id', user.id)
+                    .single();
+    
+                const today = new Date().toISOString().split('T')[0];
+                let newStreak = (profile?.streak || 0);
+                
+                if (!profile?.last_activity) {
+                    newStreak = 1; // First time ever
+                } else {
+                    const lastDate = new Date(profile.last_activity);
+                    const yesterday = new Date();
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    
+                    if (profile.last_activity === yesterdayStr) {
+                        newStreak += 1; // Streak maintained
+                    } else if (profile.last_activity !== today) {
+                        newStreak = 1; // Reset if they missed a day
+                    }
+                }
+    
+                // Update profile with new stats
+                await supabase
+                    .from('profiles')
+                    .update({ 
+                        xp: (profile?.xp || 0) + 150, 
+                        streak: newStreak,
+                        last_activity: today 
+                    })
+                    .eq('id', user.id);
+    
+                toast.success(`+100 XP // STREAK: ${newStreak}_DAYS`);
+            }
+    
+            // --- 3. ASSET UPLOAD STACK ---
             if (files.length > 0) {
                 const uploadPromises = files.map(async (file) => {
                     const fileName = `${user.id}/${appData.id}/${Date.now()}_${file.name}`;
                     const { error: storageError } = await supabase.storage
                         .from('cvs')
                         .upload(fileName, file, { upsert: true });
-
+    
                     if (storageError) throw storageError;
-
+    
                     const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(fileName);
                     
                     await supabase.from('files').insert([{
@@ -130,10 +172,10 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                         file_url: urlData.publicUrl,
                         type: 'document'
                     }]);
-
+    
                     return urlData.publicUrl;
                 });
-
+    
                 const urls = await Promise.all(uploadPromises);
                 if (urls.length > 0) {
                     await supabase.from('applications')
@@ -142,11 +184,12 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                     appData.cv_url = urls[0];
                 }
             }
-
+    
             onUpdateApplications(appData);
-            toast.success("DATA_STACK_DEPLOYED");
+            toast.success(selectedApp ? "DATA_STACK_UPDATED" : "NEW_ENTRY_COMMITTED");
             closeModal();
         } catch (error) {
+            console.error("Critical Failure:", error);
             toast.error(`SYSTEM_FAILURE: ${error.message}`);
         }
     };
