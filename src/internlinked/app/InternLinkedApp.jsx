@@ -4,63 +4,57 @@ import { Navigation } from "./components/Navigation";
 import { SimpleDashboard } from "./components/SimpleDashboard";
 import { ApplicationTracker } from "./components/ApplicationTracker";
 import { ProfileView } from "./components/ProfileView";
-import { mockActivities, mockBadges } from "../data/mockData";
+import { JobMatches } from "./components/JobMatches";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { calculateUserProgress } from '../utils/gamification';
 
+// 1. Supabase Client created outside component to prevent multiple instances
 const supabase = createClient(
     import.meta.env.VITE_SUPABASE_URL,
     import.meta.env.VITE_SUPABASE_ANON_KEY
 );
 
+// 2. Helper function for streak logic
+const calculateStreak = (lastActivityDate, currentStreak = 0) => {
+    const today = new Date().toISOString().split('T')[0];
+    if (!lastActivityDate) return 1;
+    if (lastActivityDate === today) return currentStreak || 1;
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayISO = yesterday.toISOString().split('T')[0];
+
+    return lastActivityDate === yesterdayISO ? currentStreak + 1 : 1;
+};
+
 export default function InternLinkedApp({ session }) {
     const [currentView, setCurrentView] = useState('dashboard');
     const [applications, setApplications] = useState([]);
     const [profile, setProfile] = useState(null);
-    const [isInitialSync, setIsInitialSync] = useState(true); // Guard for animations
-    
+    const [activities, setActivities] = useState([]);
     const [userStats, setUserStats] = useState({
-        level: 1, 
-        xp: 0, 
-        xpIntoLevel: 0, 
-        nextLevelXp: 300, 
-        currentStreak: 0,
-        totalApplications: 0, 
-        interviewsScheduled: 0, 
-        offersReceived: 0,
-        badges: [], 
+        level: 1, xp: 0, xpIntoLevel: 0, nextLevelXp: 100,
+        currentStreak: 0, totalApplications: 0, interviewsScheduled: 0,
         lastActivityDate: null
     });
 
+    // 3. Initial Data Fetch
     useEffect(() => {
         const fetchInitialData = async () => {
             const { data: { user } } = await supabase.auth.getUser();
             if (!user) return;
 
-            // 1. Profile Fetch/Create
-            let { data: profileData } = await supabase
+            const { data: profileData } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
                 .single();
 
-            if (!profileData) {
-                const { data: newProfile } = await supabase
-                    .from('profiles')
-                    .upsert({
-                        id: user.id,
-                        full_name: user.email.split('@')[0],
-                        xp: 0,
-                        level: 1,
-                        current_streak: 0
-                    })
-                    .select()
-                    .single();
-                if (newProfile) profileData = newProfile;
+            if (profileData) {
+                setProfile(profileData);
             }
 
-            // 2. Application Fetch
             const { data: apps } = await supabase
                 .from('applications')
                 .select('*')
@@ -73,124 +67,154 @@ export default function InternLinkedApp({ session }) {
                     position: app.position || app.role
                 }));
                 setApplications(mappedApps);
+
+                const progress = calculateUserProgress(mappedApps);
+                setUserStats(prev => ({
+                    ...prev,
+                    ...progress,
+                    currentStreak: profileData?.current_streak || 0,
+                    lastActivityDate: profileData?.last_activity_date
+                }));
             }
 
-            // 3. Initial Sync (Sets state without triggering Level Up toast)
-            if (profileData) {
-                syncUserStats(profileData, apps?.length || 0);
-            }
+            const { data: activityData } = await supabase
+                .from('activities')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('created_at', { ascending: false })
+                .limit(5);
 
-            setIsInitialSync(false); // Turn off guard after first load
+            if (activityData) {
+                setActivities(activityData);
+            }
         };
+
         fetchInitialData();
     }, []);
 
-    // Unified function to handle XP math and state sync
-    const syncUserStats = (updatedProfile, appCount) => {
-        const XP_PER_LEVEL = 300; 
-        const totalXp = updatedProfile.xp || 0;
-        
-        const newLevel = Math.floor(totalXp / XP_PER_LEVEL) + 1;
-        const xpIntoLevel = totalXp % XP_PER_LEVEL; 
-
-        // Animation Guard: Only fire if it's NOT the first load and level actually increased
-        if (!isInitialSync && newLevel > userStats.level) {
-            triggerLevelUpAnimation(newLevel);
-        }
-
-        setProfile(updatedProfile);
-        setUserStats(prev => ({
-            ...prev,
-            level: newLevel,
-            xp: totalXp,
-            xpIntoLevel: xpIntoLevel,
-            nextLevelXp: XP_PER_LEVEL,
-            currentStreak: updatedProfile.current_streak || updatedProfile.streak || 0,
-            totalApplications: appCount !== undefined ? appCount : prev.totalApplications
-        }));
-    };
-
     const triggerLevelUpAnimation = (newLevel) => {
-        toast.custom((t) => (
+        toast.custom(() => (
             <div className="bg-[#EBBB49] border-4 border-zinc-900 p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] animate-bounce">
-                <h2 className="text-2xl font-black italic uppercase tracking-tighter text-zinc-900">Level_Up!</h2>
-                <p className="font-bold uppercase text-[10px] text-zinc-800">Ranked_Up_To_Level_{newLevel}</p>
+                <h2 className="text-2xl font-black italic uppercase text-zinc-900">Level_Up!</h2>
+                <p className="font-bold uppercase text-[10px] text-zinc-800">Reached_Level_{newLevel}</p>
             </div>
         ), { duration: 4000 });
     };
 
-    const handleUpdateApplications = (updatedData, deletedId) => {
+    // 4. Main Update Function
+    const handleUpdateApplications = async (updatedData, deletedId) => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        let finalApps = [...applications];
+        let activityType = '';
+        let activityDesc = '';
+
         if (deletedId) {
-            setApplications(prev => {
-                const newApps = prev.filter(app => app.id !== deletedId);
-                setUserStats(s => ({ ...s, totalApplications: newApps.length }));
-                return newApps;
-            });
-            return;
-        }
-    
-        setApplications(prev => {
-            const filtered = prev.filter(app => app.id !== updatedData.id);
-            const formattedApp = {
-                ...updatedData,
+            const { error: appDeleteError } = await supabase.from('applications').delete().eq('id', deletedId);
+            if (appDeleteError) return toast.error(appDeleteError.message);
+            finalApps = applications.filter(app => app.id !== deletedId);
+            activityType = 'DELETION';
+            activityDesc = `Removed application entry`;
+        } else {
+            const isEditing = updatedData.id && applications.some(a => a.id === updatedData.id);
+            const dbPayload = {
+                user_id: user.id,
                 companyName: updatedData.companyName || updatedData.company,
                 position: updatedData.position || updatedData.role,
+                status: updatedData.status,
+                cv_url: updatedData.cv_url
             };
-            const newList = [formattedApp, ...filtered];
-            setUserStats(s => ({ ...s, totalApplications: newList.length }));
-            return newList;
-        });
+
+            if (isEditing) {
+                const { error: appUpdateError } = await supabase.from('applications').update(dbPayload).eq('id', updatedData.id);
+                if (appUpdateError) return toast.error(appUpdateError.message);
+                finalApps = applications.map(a => a.id === updatedData.id ? { ...a, ...updatedData } : a);
+                activityType = 'UPDATE';
+                activityDesc = `Updated ${dbPayload.companyName}`;
+            } else {
+                const { data: newData, error: appInsertError } = await supabase.from('applications').insert([dbPayload]).select();
+                if (appInsertError) return toast.error(appInsertError.message);
+                finalApps = [{ ...newData[0], companyName: newData[0].companyName, position: newData[0].position }, ...applications];
+                activityType = 'APPLICATION';
+                activityDesc = `Applied to ${dbPayload.companyName}`;
+            }
+        }
+
+        const progress = calculateUserProgress(finalApps);
+        const newStreakValue = calculateStreak(userStats.lastActivityDate, userStats.currentStreak);
+        const todayISO = new Date().toISOString().split('T')[0];
+
+        // 5. Correctly scoped Profile Sync logic
+        // InternLinkedApp.jsx
+        const { error: profileSyncError } = await supabase
+            .from('profiles')
+            .upsert({
+                id: user.id,
+                xp: Math.round(progress.xp || 0),
+                level: Math.round(progress.level || 1),
+                current_streak: Math.round(newStreakValue || 0), // MATCHES THE NEW SQL COLUMN
+                last_activity_date: todayISO
+            });
+
+        if (profileSyncError) {
+            console.error("400 Error Details:", profileSyncError);
+            return toast.error("STATS_SYNC_FAILED");
+        }
+
+        const logPayload = {
+            user_id: user.id,
+            type: activityType,
+            description: activityDesc,
+            xp: deletedId ? 0 : 50
+        };
+
+        const { data: newLog, error: logErr } = await supabase
+            .from('activities')
+            .insert([logPayload])
+            .select()
+            .single();
+
+        if (progress.level > userStats.level) {
+            triggerLevelUpAnimation(progress.level);
+        }
+
+        setApplications(finalApps);
+        setUserStats(prev => ({
+            ...prev,
+            ...progress,
+            currentStreak: newStreakValue,
+            lastActivityDate: todayISO,
+            totalApplications: finalApps.length
+        }));
+
+        if (!logErr && newLog) {
+            setActivities(prev => [newLog, ...prev].slice(0, 5));
+        }
+
+        toast.success(deletedId ? "ENTRY_REMOVED" : "XP_SYNCED");
     };
 
     const renderView = () => {
         switch (currentView) {
-            case 'dashboard':
-                return <SimpleDashboard userStats={userStats} activities={mockActivities} />;
-            case 'applications':
-                return (
-                    <ApplicationTracker 
-                        applications={applications} 
-                        onUpdateApplications={handleUpdateApplications} 
-                        onUpdateProfile={(data) => syncUserStats(data)} 
-                    />
-                );
-            case 'profile':
-                return profile ? (
-                    <ProfileView profile={profile} onUpdateProfile={(data) => syncUserStats(data)} />
-                ) : (
-                    <div className="p-12 border-4 border-dashed border-zinc-200 text-center">
-                        <p className="font-black uppercase italic text-zinc-400">Loading_Profile_Data...</p>
-                    </div>
-                );
-            default:
-                return <SimpleDashboard userStats={userStats} activities={mockActivities} />;
+            case 'dashboard': return <SimpleDashboard userStats={userStats} activities={activities} />;
+            case 'applications': return <ApplicationTracker applications={applications} onUpdateApplications={handleUpdateApplications} />;
+            case 'profile': return profile ? <ProfileView profile={profile} onUpdateProfile={setProfile} /> : null;
+            default: return <SimpleDashboard userStats={userStats} activities={activities} />;
         }
     };
 
     return (
         <div className="flex h-screen w-full bg-[#FCFBF4] overflow-hidden">
             <Navigation currentView={currentView} onViewChange={setCurrentView} userStats={userStats} />
-
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Header */}
                 <div className="bg-white border-b-4 border-zinc-900 px-6 py-4 flex justify-between items-center z-10">
-                    <h1 className="text-4xl font-black italic tracking-tighter uppercase">
-                        <span className="text-black-600">Intern</span><span className="text-[#EBBB49]">Linked</span>
-                    </h1>
-                    <button
-                        onClick={() => supabase.auth.signOut()}
-                        className="px-4 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-[10px] font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-[2px] active:translate-y-[2px] transition-all hover:bg-zinc-800"
-                    >
-                        Exit_Session
-                    </button>
+                    <h1 className="text-4xl font-black italic tracking-tighter uppercase">Intern<span className="text-[#EBBB49]">Linked</span></h1>
+                    <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-[10px] font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">Exit_Session</button>
                 </div>
-
-                <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-                    {renderView()}
-                </div>
+                <div className="flex-1 overflow-y-auto p-6 lg:p-8">{renderView()}</div>
             </main>
-
-            <Toaster position="bottom-right" toastOptions={{ className: 'rounded-none border-4 border-zinc-900 font-black uppercase text-[10px]' }} />
+            <Toaster position="bottom-right" />
         </div>
     );
 }

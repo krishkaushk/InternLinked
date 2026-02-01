@@ -227,10 +227,9 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             {/* Content Area */}
             <div className="flex-1 overflow-hidden p-4 bg-zinc-50 border-2 border-zinc-900 shadow-[inset_4px_4px_0px_0px_rgba(0,0,0,0.05)]">
                 {view === 'kanban' ? (
-                    <KanbanBoard 
-                        applications={applications} 
-                        onSelectApplication={handleEditClick} 
-                        onOpenDrawer={handleOpenDrawer}
+                    <KanbanBoard
+                        applications={applications}
+                        onUpdateStatus={onUpdateApplications} // Ensure this prop name is 'onUpdateStatus'
                     />
                 ) : (
                     <ApplicationTable 
