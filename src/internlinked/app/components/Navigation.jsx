@@ -1,14 +1,12 @@
 import React from 'react';
 import { LayoutGrid, Target, Briefcase, User } from 'lucide-react';
 
-/**
- * Navigation Component (Yellow Retro Version)
- * FIXED: Prop names now match InternLinkedApp.jsx
- */
-// 1. Change 'onTabChange' to 'onViewChange' to match the parent
 export function Navigation({ currentView, onViewChange, userStats }) {
-    const { level, xp, xpToNextLevel } = userStats;
-    const progressPercentage = (xp / xpToNextLevel) * 100;
+    // Destructuring to ensure we use the correct level-specific XP
+    const { level, xpIntoLevel, nextLevelXp } = userStats;
+
+    // Safety check for percentage to prevent overflow
+    const progressPercentage = Math.min((xpIntoLevel / nextLevelXp) * 100, 100);
 
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
@@ -31,13 +29,13 @@ export function Navigation({ currentView, onViewChange, userStats }) {
                     </div>
                 </div>
 
-                {/* Yellow XP Bar */}
+                {/* Fixed Sidebar XP Bar */}
                 <div className="space-y-1">
                     <div className="flex justify-between text-[9px] font-black uppercase">
-                        <span>{xp} XP</span>
-                        <span>{xpToNextLevel} XP</span>
+                        <span>{xpIntoLevel} XP</span>
+                        <span>{nextLevelXp} XP</span>
                     </div>
-                    <div className="h-4 border-2 border-zinc-900 bg-white p-0.5">
+                    <div className="h-4 border-2 border-zinc-900 bg-white p-0.5 relative overflow-hidden">
                         <div
                             className="h-full bg-[#EBBB49] border-r-2 border-zinc-900 transition-all duration-500"
                             style={{ width: `${progressPercentage}%` }}
@@ -50,12 +48,10 @@ export function Navigation({ currentView, onViewChange, userStats }) {
             <nav className="flex-1 p-4 space-y-3">
                 {menuItems.map((item) => {
                     const Icon = item.icon;
-                    // 2. Use 'currentView' instead of 'activeTab'
                     const isActive = currentView === item.id;
                     return (
                         <button
                             key={item.id}
-                            // 3. Call 'onViewChange' instead of 'onTabChange'
                             onClick={() => onViewChange(item.id)}
                             className={`w-full flex items-center gap-4 p-3 font-black uppercase text-xs border-2 transition-all
                                 ${isActive
