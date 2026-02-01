@@ -42,55 +42,73 @@ export default function InternLinkedApp({ session }) {
     // 3. Initial Data Fetch
     useEffect(() => {
         const fetchInitialData = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            // 1. Get the current authenticated user
+            const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-            const { data: profileData } = await supabase
+            if (authError || !user) {
+                console.error("Auth Error:", authError?.message);
+                return;
+            }
+
+            // 2. Fetch User Profile (Name, XP, Level, Streak)
+            const { data: profileData, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
                 .single();
 
-            if (profileData) {
-                setProfile(profileData);
+            if (profileError) {
+                console.error("Profile Fetch Error:", profileError.message);
+            } else if (profileData) {
+                setProfile(profileData); // Stores full_name for your header
             }
 
-            const { data: apps } = await supabase
+            // 3. Fetch Applications
+            const { data: apps, error: appsError } = await supabase
                 .from('applications')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            if (apps) {
+            if (appsError) {
+                console.error("Apps Fetch Error:", appsError.message);
+            } else if (apps) {
                 const mappedApps = apps.map(app => ({
                     ...app,
                     companyName: app.companyName || app.company,
                     position: app.position || app.role
                 }));
+
                 setApplications(mappedApps);
 
+                // Calculate current stats using your gamification logic
                 const progress = calculateUserProgress(mappedApps);
+
                 setUserStats(prev => ({
                     ...prev,
                     ...progress,
                     currentStreak: profileData?.current_streak || 0,
-                    lastActivityDate: profileData?.last_activity_date
+                    lastActivityDate: profileData?.last_activity_date,
+                    totalApplications: mappedApps.length
                 }));
             }
 
-            const { data: activityData } = await supabase
+            // 4. Fetch the 5 most recent Activity Logs
+            const { data: activityData, error: logError } = await supabase
                 .from('activities')
                 .select('*')
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false })
                 .limit(5);
 
-            if (activityData) {
+            if (logError) {
+                console.error("Activity Log Fetch Error:", logError.message);
+            } else if (activityData) {
                 setActivities(activityData);
             }
         };
 
         fetchInitialData();
-    }, []);
+    }, []); // Empty dependency array ensures this only runs once on mount
 
     const triggerLevelUpAnimation = (newLevel) => {
         toast.custom(() => (
@@ -209,8 +227,10 @@ export default function InternLinkedApp({ session }) {
             <Navigation currentView={currentView} onViewChange={setCurrentView} userStats={userStats} />
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <div className="bg-white border-b-4 border-zinc-900 px-6 py-4 flex justify-between items-center z-10">
-                    <h1 className="text-4xl font-black italic tracking-tighter uppercase">Intern<span className="text-[#EBBB49]">Linked</span></h1>
-                    <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-[10px] font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">Exit_Session</button>
+                    <h1 className="text-4xl font-black italic tracking-tighter uppercase">
+                        Intern<span className="text-[#EBBB49]">Linked</span>
+                    </h1>
+                    <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-[10px] font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">Exit Session</button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-6 lg:p-8">{renderView()}</div>
             </main>

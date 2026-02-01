@@ -48,7 +48,7 @@ export function ProfileView({ profile, onUpdateProfile }) {
                 </div>
                 <Button className={yellowBtn} onClick={() => setIsEditing(!isEditing)}>
                     <Edit className="size-4 mr-2" />
-                    {isEditing ? "Cancel_Edit" : "Edit_Profile"}
+                    {isEditing ? "Cancel Edit" : "Edit Profile"}
                 </Button>
             </div>
 
@@ -60,7 +60,7 @@ export function ProfileView({ profile, onUpdateProfile }) {
                     <Card className={`p-6 bg-white ${boxStyle}`}>
                         <div className="flex items-center gap-2 border-b-2 border-zinc-100 pb-4 mb-4">
                             <GraduationCap className="text-[#EBBB49]" />
-                            <h2 className="font-black uppercase text-sm tracking-widest">Academic_Credentials</h2>
+                            <h2 className="font-black uppercase text-sm tracking-widest">Academic Background</h2>
                         </div>
 
                         {isEditing ? (
@@ -114,7 +114,7 @@ export function ProfileView({ profile, onUpdateProfile }) {
                 {/* Right Column: Contact & Quick Stats */}
                 <div className="space-y-8">
                     <Card className={`p-6 bg-zinc-900 text-white ${boxStyle} shadow-[4px_4px_0px_0px_#EBBB49]`}>
-                        <h2 className="font-black uppercase text-[10px] tracking-[0.2em] text-[#EBBB49] mb-4">Comm_Channels</h2>
+                        <h2 className="font-black uppercase text-[10px] tracking-[0.2em] text-[#EBBB49] mb-4">Contact</h2>
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
                                 <Mail size={16} className="text-[#EBBB49]" />
@@ -122,7 +122,7 @@ export function ProfileView({ profile, onUpdateProfile }) {
                             </div>
                             <div className="flex items-center gap-3">
                                 <Phone size={16} className="text-[#EBBB49]" />
-                                <span className="text-xs font-bold">{profile.phone || "Not_Linked"}</span>
+                                <span className="text-xs font-bold">{profile.phone || "Not Linked"}</span>
                             </div>
                         </div>
                     </Card>
