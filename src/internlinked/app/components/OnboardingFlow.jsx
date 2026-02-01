@@ -122,7 +122,9 @@ export function OnboardingFlow({ onComplete }) {
         <div className="min-h-screen bg-[#FDFCF0] font-sans flex items-center justify-center p-4">
             <div className={`w-full max-w-2xl bg-white ${boxStyle}`}>
                 <div className="bg-zinc-900 text-white px-4 py-2 text-[10px] font-black uppercase tracking-widest italic">
-                    Intern_Initialization_v8.sys
+                <span className="text-black-600">Intern</span>
+                <span className="text-[#EBBB49]">Linked</span>
+                    
                 </div>
 
                 <div className="p-8 space-y-6">
@@ -155,42 +157,42 @@ export function OnboardingFlow({ onComplete }) {
 
                     {/* SEPARATE ROW: CITY */}
                     <div className="space-y-1 border-t-2 border-zinc-100 pt-4">
-                        <Label className="text-[10px] font-black uppercase text-zinc-500">City / Current Location</Label>
+                        <Label className="text-[10px] font-black uppercase text-zinc-500">City / Current Location <span className="text-red-500">*</span></Label>
                         <div className={inputStyle}><input className="w-full bg-transparent outline-none text-sm" value={profile.location} onChange={e => setProfile({...profile, location: e.target.value})} /></div>
                     </div>
 
                     {/* SEPARATE ROW: SCHOOL */}
                     <div className="space-y-1">
-                        <Label className="text-[10px] font-black uppercase text-zinc-500">Institution / University</Label>
+                        <Label className="text-[10px] font-black uppercase text-zinc-500">Institution / University <span className="text-red-500">*</span></Label>
                         <div className={inputStyle}><input className="w-full bg-transparent outline-none text-sm" placeholder="e.g. Stanford University" value={profile.school} onChange={e => setProfile({...profile, school: e.target.value})} /></div>
                     </div>
 
                     {/* MAJORS & DATES */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase text-zinc-500">Major</Label>
+                            <Label className="text-[10px] font-black uppercase text-zinc-500">Major <span className="text-red-500">*</span></Label>
                             <div className={inputStyle}><input className="w-full bg-transparent outline-none text-sm" value={profile.major} onChange={e => setProfile({...profile, major: e.target.value})} /></div>
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase text-zinc-500">Minor</Label>
+                            <Label className="text-[10px] font-black uppercase text-zinc-500">Minor (if applicable)</Label>
                             <div className={inputStyle}><input className="w-full bg-transparent outline-none text-sm" value={profile.minor} onChange={e => setProfile({...profile, minor: e.target.value})} /></div>
                         </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase text-zinc-500">Start (MM/YYYY)</Label>
+                            <Label className="text-[10px] font-black uppercase text-zinc-500">Start (MONTH/YEAR) <span className="text-red-500">*</span></Label>
                             <div className={inputStyle}><input type="month" className="w-full bg-transparent outline-none text-xs uppercase" value={profile.schoolStartDate} onChange={e => setProfile({...profile, schoolStartDate: e.target.value})} /></div>
                         </div>
                         <div className="space-y-1">
-                            <Label className="text-[10px] font-black uppercase text-zinc-500">Grad (MM/YYYY)</Label>
+                            <Label className="text-[10px] font-black uppercase text-zinc-500">Expected Grad (MONTH/YEAR) <span className="text-red-500">*</span></Label>
                             <div className={inputStyle}><input type="month" className="w-full bg-transparent outline-none text-xs uppercase" value={profile.gradDate} onChange={e => setProfile({...profile, gradDate: e.target.value})} /></div>
                         </div>
                     </div>
 
                     {/* SKILLS */}
                     <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase text-zinc-500">Skills Matrix</Label>
+                        <Label className="text-[10px] font-black uppercase text-zinc-500">Skills</Label>
                         <div className="flex flex-wrap gap-2 p-3 bg-zinc-50 border-2 border-zinc-900 shadow-inner min-h-[50px]">
                             {profile.skills.map((s, i) => (
                                 <span key={i} className="flex items-center gap-1.5 px-3 py-1 bg-[#EBBB49] border-2 border-zinc-900 text-[10px] font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
@@ -199,7 +201,7 @@ export function OnboardingFlow({ onComplete }) {
                             ))}
                             <input 
                                 className="bg-transparent outline-none text-[10px] font-bold uppercase flex-1 min-w-[100px]"
-                                placeholder="+ Add_Skill"
+                                placeholder="+ Add Skill"
                                 value={skillInput}
                                 onChange={e => setSkillInput(e.target.value)}
                                 onKeyDown={e => {
@@ -219,7 +221,7 @@ export function OnboardingFlow({ onComplete }) {
                             className={`px-12 py-4 bg-[#EBBB49] font-black uppercase text-xs tracking-widest ${boxStyle} 
                                 ${ (isSaving || !profile.firstName || !profile.lastName) ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:bg-[#d4a942] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all'}`}
                         >
-                            {isSaving ? "Syncing..." : "Complete_Setup >"}
+                            {isSaving ? "Syncing..." : "Complete Setup >"}
                         </button>
                     </div>
                 </div>
