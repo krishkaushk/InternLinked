@@ -12,40 +12,74 @@ const supabase = createClient(
 );
 
 export default function App() {
-  const [session, setSession] = useState(null);
-  const [isNewUser, setIsNewUser] = useState(false);
-  const [loading, setLoading] = useState(true);
+    const [session, setSession] = useState(null);
+    const [profile, setProfile] = useState(null); // Track the DB profile
+    const [loading, setLoading] = useState(true);
+  
+    const fetchProfile = async (userId) => {
+        setLoading(true);
+        
+        // Add a tiny 500ms delay to let the database "breathe" after the upsert
+        await new Promise(resolve => setTimeout(resolve, 500));
+    
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('onboarding_completed')
+                .eq('id', userId)
+                .single();
+    
+            if (error) {
+                setProfile({ onboarding_completed: false });
+            } else {
+                // CRITICAL: Log this so you can see it in the F12 console
+                console.log("DB returned onboarding status:", data.onboarding_completed);
+                setProfile(data);
+            }
+        } catch (err) {
+            setProfile({ onboarding_completed: false });
+        } finally {
+            setLoading(false);
+        }
+    };
+  
+    useEffect(() => {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        setSession(session);
+        if (session) fetchProfile(session.user.id);
+        else setLoading(false);
+      });
+  
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        setSession(session);
+        if (session) fetchProfile(session.user.id);
+        else {
+          setProfile(null);
+          setLoading(false);
+        }
+      });
+  
+      return () => subscription.unsubscribe();
+    }, []);
+  
+    if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#FDFCF0]">Initializing_System...</div>;
+  
+    if (!session) return <SignIn />;
 
-  useEffect(() => {
-    // Initial session check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+            // App.jsx
 
-    // Listen for Auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (_event === 'SIGNED_IN' && session?.user?.last_sign_in_at === session?.user?.created_at) {
-        setIsNewUser(true);
-      }
-    });
+        // Change your onboarding check to this:
+        if (!loading && session) {
+            // If no profile exists yet, or onboarding isn't finished
+            if (!profile || profile.onboarding_completed === false) {
+                return (
+                    <OnboardingFlow 
+                        onComplete={() => fetchProfile(session.user.id)} 
+                    />
+                );
+            }
+        }
 
-    return () => subscription.unsubscribe();
-  }, []);
-
-  if (loading) return <div className="min-h-screen flex items-center justify-center bg-background">Loading...</div>;
-
-  // 1. If not logged in -> Show Sign In
-  if (!session) {
-    return <SignIn />;
-  }
-
-  // 2. If just signed up -> Show Onboarding
-  if (isNewUser) {
-    return <OnboardingFlow onComplete={() => setIsNewUser(false)} />;
-  }
-
-  // 3. If logged in -> Show the main App (Dashboard)
-  return <InternLinkedApp session={session} />;
-}
+        // Otherwise, show the dashboard
+        return <InternLinkedApp session={session} />;
+        }
