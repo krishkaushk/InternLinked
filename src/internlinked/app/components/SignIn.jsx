@@ -30,41 +30,48 @@ export default function SignIn() {
     }
   };
 
-  // Bevel styles for that Win95 feel
-  const outdent = "border-t-white border-l-white border-b-zinc-800 border-r-zinc-800 border-2";
-  const indent = "border-b-white border-r-white border-t-zinc-800 border-l-zinc-800 border-2";
+  // Modern-retro: Flat borders with a "hard" drop shadow
+  const boxStyle = "border-2 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]";
+  const inputStyle = "border-2 border-zinc-900 bg-white p-2 shadow-inner";
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#008080] font-mono p-4">
-      {/* Main Window */}
-      <div className={`w-full max-w-md bg-[#c0c0c0] ${outdent} shadow-xl`}>
+    <div className="min-h-screen flex items-center justify-center bg-[#92B6F0] font-sans p-4">
+          {/* Main Window Container */}
+      <div className={`w-full max-w-md bg-white ${boxStyle}`}>
         
-        {/* Title Bar */}
-        <div className="bg-[#000080] text-white flex items-center justify-between px-2 py-1 m-1">
-          <span className="text-sm font-bold flex items-center gap-2">
-            InternLinked.exe
+        {/* Simplified Header Bar (Hints at retro without the blue gradient) */}
+        <div className="bg-zinc-900 text-white flex items-center justify-between px-3 py-2">
+          <span className="text-xs font-bold tracking-widest uppercase">
+            
           </span>
-          <div className="flex gap-1">
-            <button className={`bg-[#c0c0c0] text-black px-1 ${outdent} active:border-none`}><Minus size={12}/></button>
-            <button className={`bg-[#c0c0c0] text-black px-1 ${outdent} active:border-none`}><Square size={10}/></button>
-            <button className={`bg-[#c0c0c0] text-black px-1 ml-1 ${outdent} active:border-none`}><X size={12}/></button>
+          <div className="flex gap-3">
+            <Minus size={14} className="cursor-pointer hover:text-primary transition-colors" />
+            <Square size={12} className="cursor-pointer hover:text-primary transition-colors" />
+            <X size={14} className="cursor-pointer hover:text-primary transition-colors" />
           </div>
         </div>
 
-        {/* Form Area */}
+        {/* Form Content */}
         <div className="p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold tracking-tighter uppercase">InternLinked</h1>
+          <div className="mb-10 text-left border-b-2 border-zinc-100 pb-4">
+          <h1 className="text-4xl font-black italic tracking-tighter uppercase">
+            <span className="text-black-600">Intern</span>
+            <span className="text-[#EBBB49]">Linked</span>
+            </h1>
+            <p className="text-xs font-bold text-zinc-400 mt-1 uppercase tracking-widest">
+              {isSignUp ? "User Registration" : "User Authentication"}
+            </p>
           </div>
 
           <form onSubmit={handleAuth} className="space-y-6">
-            <div className="space-y-1">
-              <label className="text-sm font-bold">Username/Email:</label>
-              <div className={`bg-white p-1 flex items-center ${indent}`}>
-                <Mail className="size-4 text-zinc-500 mr-2" />
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-tight">Email Address</label>
+              <div className={`flex items-center ${inputStyle} focus-within:ring-2 ring-primary/20 transition-all`}>
+                <Mail className="size-4 text-zinc-400 mr-3" />
                 <input
                   type="email"
-                  className="w-full outline-none text-black bg-transparent"
+                  className="w-full outline-none text-sm font-medium text-black bg-transparent"
+                  placeholder="name@university.edu"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -72,13 +79,14 @@ export default function SignIn() {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-bold">Password:</label>
-              <div className={`bg-white p-1 flex items-center ${indent}`}>
-                <Lock className="size-4 text-zinc-500 mr-2" />
+            <div className="space-y-2">
+              <label className="text-xs font-black uppercase tracking-tight">Secure Password</label>
+              <div className={`flex items-center ${inputStyle} focus-within:ring-2 ring-primary/20 transition-all`}>
+                <Lock className="size-4 text-zinc-400 mr-3" />
                 <input
                   type="password"
-                  className="w-full outline-none text-black bg-transparent"
+                  className="w-full outline-none text-sm font-medium text-black bg-transparent"
+                  placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -87,33 +95,46 @@ export default function SignIn() {
             </div>
 
             {error && (
-              <div className={`p-2 bg-red-100 text-red-700 text-xs ${outdent}`}>
-                Error: {error}
+              <div className="p-3 bg-red-50 border-2 border-red-900 text-red-900 text-xs font-bold uppercase tracking-tighter">
+                System Error: {error}
               </div>
             )}
 
             <button 
               type="submit" 
               disabled={loading}
-              className={`w-full py-2 bg-[#c0c0c0] font-bold uppercase active:translate-y-[1px] ${outdent} hover:bg-zinc-300 transition-colors`}
+              className={`w-full py-3 bg-primary text-black font-black uppercase tracking-widest text-sm transition-all active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${boxStyle.replace('shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]', 'shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]')} hover:bg-primary/90`}
             >
-              {loading ? <Loader2 className="animate-spin mx-auto size-5" /> : (isSignUp ? "Create_Account" : "Login")}
+              {loading ? (
+                <Loader2 className="animate-spin mx-auto size-5" />
+              ) : (
+                isSignUp ? "Create Profile" : "Access System"
+              )}
             </button>
           </form>
 
-          <div className="mt-8 pt-4 border-t border-zinc-500 text-center">
+          <div className="mt-8 text-center">
             <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-xs text-blue-800 font-bold hover:underline"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+              }}
+              className="text-[10px] font-black uppercase tracking-widest text-zinc-500 hover:text-primary transition-colors underline decoration-2 underline-offset-4"
             >
-              {isSignUp ? "Already have a profile? Sign In" : "Need a new profile? Register here"}
+              {isSignUp ? "Switch to Login" : "Initialize New Account"}
             </button>
           </div>
         </div>
         
-        {/* Status Bar */}
-        <div className={`m-1 mt-0 px-2 py-0.5 text-[10px] text-zinc-600 ${indent}`}>
-            Status: Ready
+        {/* Subtle Bottom Bar */}
+        <div className="bg-zinc-50 border-t-2 border-zinc-900 px-4 py-2 flex justify-between items-center">
+          <div className="flex gap-1">
+            <div className="size-2 bg-green-500 rounded-full border border-zinc-900" />
+            <div className="size-2 bg-zinc-200 rounded-full border border-zinc-900" />
+          </div>
+          <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tighter">
+            
+          </span>
         </div>
       </div>
     </div>
