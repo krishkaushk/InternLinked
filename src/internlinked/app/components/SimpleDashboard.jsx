@@ -24,7 +24,7 @@ export function SimpleDashboard({ userStats, activities }) {
             <div className="bg-white border-4 border-zinc-900 p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div className="space-y-2">
-                        <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-zinc-500">Current_Standing</h2>
+                        <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-zinc-500">Your Progess</h2>
                         <div className="flex items-baseline gap-2">
                             <span className="text-7xl font-black italic tracking-tighter uppercase">LVL_{level}</span>
                         </div>
@@ -38,7 +38,7 @@ export function SimpleDashboard({ userStats, activities }) {
                 {/* Progress Bar: Locked to level thresholds */}
                 <div className="mt-8 space-y-2">
                     <div className="flex justify-between font-black uppercase text-xs italic">
-                        <span>Level_Progress: {xpIntoLevel} / {nextLevelXp} XP</span>
+                        <span>XP Progress: {xpIntoLevel} / {nextLevelXp} XP</span>
                         <span>{Math.round(progressPercentage)}%</span>
                     </div>
                     <div className="h-6 border-4 border-zinc-900 bg-white p-1 relative overflow-hidden">
@@ -48,7 +48,7 @@ export function SimpleDashboard({ userStats, activities }) {
                         />
                     </div>
                     <p className="text-[10px] font-bold uppercase text-zinc-400 italic">
-                        Next_Level_Threshold: {nextLevelXp - xpIntoLevel} XP Remaining
+                        Points to Next Level: {nextLevelXp - xpIntoLevel} XP Remaining
                     </p>
                 </div>
             </div>
@@ -58,7 +58,7 @@ export function SimpleDashboard({ userStats, activities }) {
                 {/* Total Applications Card */}
                 <div className="bg-white border-4 border-zinc-900 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-between">
                     <div>
-                        <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">Total_Apps</p>
+                        <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">Applications</p>
                         <p className="text-3xl font-black italic">{totalApplications}</p>
                     </div>
                     <Target size={28} strokeWidth={3} className="text-zinc-900" />
@@ -76,7 +76,7 @@ export function SimpleDashboard({ userStats, activities }) {
                 {/* XP_Streak Card - High-Contrast Brand Yellow */}
                 <div className="bg-[#EBBB49] border-4 border-zinc-900 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-between">
                     <div>
-                        <p className="text-[10px] font-black uppercase text-zinc-900 mb-1">XP_Streak</p>
+                        <p className="text-[10px] font-black uppercase text-zinc-900 mb-1">XP Streak</p>
                         <p className="text-3xl font-black italic text-zinc-900">{currentStreak || 0}</p>
                     </div>
                     <TrendingUp size={28} strokeWidth={3} className="text-zinc-900" />
@@ -86,7 +86,7 @@ export function SimpleDashboard({ userStats, activities }) {
             {/* 3. Activity Log - Clean State Management */}
             <div className="bg-white border-4 border-zinc-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-10">
                 <div className="border-b-4 border-zinc-900 p-4 bg-zinc-900">
-                    <h3 className="text-white font-black uppercase italic text-sm tracking-widest">Recent_Activity_Logs</h3>
+                    <h3 className="text-white font-black uppercase italic text-sm tracking-widest">Recent Activity</h3>
                 </div>
                 <div className="p-2 max-h-64 overflow-y-auto">
                     {activities && activities.length > 0 ? (
@@ -103,7 +103,7 @@ export function SimpleDashboard({ userStats, activities }) {
                         ))
                     ) : (
                         <div className="p-8 text-center text-zinc-300 font-black uppercase italic text-xs">
-                            No_Recent_Activity_Detected
+                            No activities yet
                         </div>
                     )}
                 </div>
