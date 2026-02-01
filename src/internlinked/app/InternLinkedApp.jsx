@@ -88,14 +88,17 @@ export default function InternLinkedApp({ session }) {
     };
 
     const handleUpdateApplications = async (updatedData, deletedId) => {
+        // 1. Authenticate User
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
         let finalApps = [...applications];
 
+        // 2. Handle Application Database Changes
         if (deletedId) {
-            const { error } = await supabase.from('applications').delete().eq('id', deletedId);
-            if (error) return toast.error(error.message);
+            // Use unique error name to avoid block-scope collisions
+            const { error: appDeleteError } = await supabase.from('applications').delete().eq('id', deletedId);
+            if (appDeleteError) return toast.error(appDeleteError.message);
             finalApps = applications.filter(app => app.id !== deletedId);
         } else {
             const isEditing = updatedData.id && applications.some(a => a.id === updatedData.id);
@@ -110,41 +113,60 @@ export default function InternLinkedApp({ session }) {
             };
 
             if (isEditing) {
-                const { error } = await supabase.from('applications').update(dbPayload).eq('id', updatedData.id);
-                if (error) return toast.error(error.message);
+                const { error: appUpdateError } = await supabase.from('applications').update(dbPayload).eq('id', updatedData.id);
+                if (appUpdateError) return toast.error(appUpdateError.message);
                 finalApps = applications.map(a => a.id === updatedData.id ? { ...a, ...updatedData } : a);
             } else {
-                const { data, error } = await supabase.from('applications').insert([dbPayload]).select();
-                if (error) return toast.error(error.message);
-                const newApp = { ...data[0], companyName: data[0].companyName, position: data[0].position };
+                const { data: newData, error: appInsertError } = await supabase.from('applications').insert([dbPayload]).select();
+                if (appInsertError) return toast.error(appInsertError.message);
+
+                const newApp = {
+                    ...newData[0],
+                    companyName: newData[0].companyName,
+                    position: newData[0].position
+                };
                 finalApps = [newApp, ...applications];
             }
         }
 
-        // 1. Calculate new progress with fast Level 1 scaling
-        const progress = calculateUserProgress(finalApps, mockActivities, mockBadges);
+        // 3. Calculate Gamification & Streak
+        // Uses the fast Level 1 scaling and correct streak increment logic
+        const progress = calculateUserProgress(finalApps);
+        const newStreakValue = calculateStreak(userStats.lastActivityDate, userStats.currentStreak);
+        const todayISO = new Date().toISOString().split('T')[0]; // Matches Supabase Date type
 
-        // 2. PERSIST PROGRESS TO SUPABASE
-        const { error: profileError } = await supabase
+        // 4. Persist Progress to Profile
+        const { error: profileSyncError } = await supabase
             .from('profiles')
             .upsert({
                 id: user.id,
                 xp: progress.xp,
                 level: progress.level,
-                current_streak: progress.currentStreak,
-                last_activity_date: new Date().toISOString()
+                current_streak: newStreakValue,
+                last_activity_date: todayISO
             });
 
-        if (!profileError) {
-            // Check for level up before updating state
-            if (progress.level > userStats.level) {
-                triggerLevelUpAnimation(progress.level);
-            }
-
-            setApplications(finalApps);
-            setUserStats(prev => ({ ...prev, ...progress, totalApplications: finalApps.length }));
-            toast.success(deletedId ? "ENTRY_DELETED" : "XP_SYNCED_SUCCESSFULLY");
+        if (profileSyncError) {
+            console.error("Profile Sync Error:", profileSyncError.message);
+            return toast.error("STATS_SYNC_FAILED");
         }
+
+        // 5. Update UI State
+        // Check for level up animation trigger
+        if (progress.level > userStats.level) {
+            triggerLevelUpAnimation(progress.level);
+        }
+
+        setApplications(finalApps);
+        setUserStats(prev => ({
+            ...prev,
+            ...progress,
+            currentStreak: newStreakValue,
+            lastActivityDate: todayISO,
+            totalApplications: finalApps.length
+        }));
+
+        toast.success(deletedId ? "ENTRY_REMOVED" : "XP_SYNCED");
     };
 
     const renderView = () => {
