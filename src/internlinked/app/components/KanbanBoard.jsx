@@ -66,7 +66,6 @@ export function KanbanBoard({
                                 onClick={() => onAddApplication(column.status)}
                                 className="h-8 w-8 p-0"
                             >
-                                <Plus className="size-4" />
                             </Button>
                         </div>
 

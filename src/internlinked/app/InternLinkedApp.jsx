@@ -82,58 +82,120 @@ export default function InternLinkedApp({ session }) {
         await supabase.auth.signOut();
     };
 
-    const handleUpdateApplications = async (newJobOrList) => {
+    const uploadCV = async (file, appId) => {
+        if (!file) return null;
+
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${appId}-CV.${fileExt}`; // Labeled as CV
+        const filePath = `cvs/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+            .from('cvs') // Ensure you create a 'cvs' bucket in Supabase
+            .upload(filePath, file);
+
+        if (uploadError) {
+            console.error("CV Upload error:", uploadError.message);
+            return null;
+        }
+
+        const { data } = supabase.storage.from('cvs').getPublicUrl(filePath);
+        return data.publicUrl;
+    };
+
+
+    const handleEditApplication = async (updatedApp) => {
+        const { error } = await supabase
+            .from('applications')
+            .update({
+                company_name: updatedApp.companyName,
+                position: updatedApp.position,
+                status: updatedApp.status,
+                notes: updatedApp.notes,
+                job_url: updatedApp.jobUrl
+            })
+            .eq('id', updatedApp.id);
+
+        if (error) {
+            toast.error("Update failed: " + error.message);
+            return;
+        }
+
+        // Update the local list so the Kanban board reflects the change
+        const newApps = applications.map(app => app.id === updatedApp.id ? updatedApp : app);
+        setApplications(newApps);
+
+        // Recalculate XP in case the status changed (e.g., from 'applied' to 'interview')
+        const progress = calculateUserProgress(newApps, mockActivities, mockBadges);
+        setUserStats(prev => ({ ...prev, ...progress }));
+
+        toast.success("Application updated!");
+    };
+
+    const handleUpdateApplications = async (updatedData) => {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
-        let updatedList;
-        let newJobToInsert = null;
+        // Check if this is an edit (it has an ID and already exists in our list)
+        const isEditing = updatedData.id && applications.some(a => a.id === updatedData.id);
 
-        if (Array.isArray(newJobOrList)) {
-            updatedList = newJobOrList;
-        } else {
-            updatedList = [...applications, newJobOrList];
-            newJobToInsert = newJobOrList;
-        }
-
-        // 4. Save to Supabase
-        if (newJobToInsert) {
-            const { error: insertError } = await supabase
+        if (isEditing) {
+            // --- UPDATE EXISTING APPLICATION ---
+            const { error: updateError } = await supabase
                 .from('applications')
-                .insert([{
-                    user_id: user.id,
-                    company_name: newJobToInsert.companyName,
-                    position: newJobToInsert.position,
-                    status: newJobToInsert.status || 'saved',
-                    job_type: newJobToInsert.jobType || 'internship',
-                    notes: newJobToInsert.notes || '',
-                    job_url: newJobToInsert.jobUrl || ''
-                }]);
+                .update({
+                    company_name: updatedData.companyName || updatedData.company_name,
+                    position: updatedData.position,
+                    status: updatedData.status,
+                    job_type: updatedData.jobType || updatedData.job_type,
+                    notes: updatedData.notes,
+                    job_url: updatedData.jobUrl || updatedData.job_url,
+                    cv_url: updatedData.cv_url // CRITICAL: This was likely missing
+                })
+                .eq('id', updatedData.id);
 
-            if (insertError) {
-                console.error("Supabase Insert Failed:", insertError.message);
+            if (updateError) {
+                console.error("Update Failed:", updateError.message);
+                toast.error("Failed to save changes.");
                 return;
             }
 
-            // 5. Update Streak logic
-            const updatedStreak = calculateNewStreak(userStats.lastActivityDate, userStats.currentStreak);
-            await supabase
-                .from('profiles')
-                .update({
-                    current_streak: updatedStreak,
-                    last_activity_date: new Date().toISOString().split('T')[0]
-                })
-                .eq('id', user.id);
+            // Sync local state
+            setApplications(apps => apps.map(a => a.id === updatedData.id ? updatedData : a));
+            toast.success("Changes saved!");
+
+        } else {
+            // --- INSERT NEW APPLICATION ---
+            const { data: newDbApp, error: insertError } = await supabase
+                .from('applications')
+                .insert([{
+                    user_id: user.id,
+                    company_name: updatedData.companyName,
+                    position: updatedData.position,
+                    status: updatedData.status || 'saved',
+                    job_type: updatedData.jobType || 'internship',
+                    notes: updatedData.notes || '',
+                    job_url: updatedData.jobUrl || '',
+                    cv_url: updatedData.cv_url // Added here too
+                }])
+                .select();
+
+            if (insertError) {
+                console.error("Insert Failed:", insertError.message);
+                return;
+            }
+
+            setApplications(prev => [...prev, newDbApp[0]]);
+            toast.success("Application added!");
         }
 
-        // 6. Final State Sync
-        setApplications(updatedList);
-        const newProgress = calculateUserProgress(updatedList, mockActivities, mockBadges);
-        setUserStats(prev => ({
-            ...prev,
-            ...newProgress,
-            totalApplications: updatedList.length
-        }));
+        // Recalculate XP based on Exponential Scaling ($500 \cdot \text{level}^{1.5}$)
+        const newProgress = calculateUserProgress(
+            isEditing ? applications.map(a => a.id === updatedData.id ? updatedData : a) : [...applications, updatedData],
+            mockActivities,
+            mockBadges
+        );
+
+        setUserStats(prev => ({ ...prev, ...newProgress }));
     };
 
     const renderView = () => {
