@@ -56,12 +56,7 @@ export function ApplicationDetail({ application, open, onClose, onUpdateStatus, 
                         <Badge className="bg-[#EBBB49] text-zinc-900 border-none font-black text-[10px] rounded-none px-3">
                             ID_{application.id?.toString().slice(0, 8)}
                         </Badge>
-                        {application.matchScore && (
-                            <div className="flex items-center gap-2 text-[#EBBB49]">
-                                <Target size={16} strokeWidth={3} />
-                                <span className="font-black italic text-lg">{application.matchScore}%_MATCH</span>
-                            </div>
-                        )}
+        
                     </div>
                     <SheetTitle className="text-4xl font-black uppercase italic tracking-tighter leading-none text-white">
                         {application.position}
