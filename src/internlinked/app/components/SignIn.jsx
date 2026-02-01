@@ -36,7 +36,7 @@ export default function SignIn() {
 
   return (
     //bACKGOURND COLOUR
-    <div className="min-h-screen flex items-center justify-center bg-[#92B6F0] font-sans p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[#FDFCF0] font-sans p-4">
           {/* Main Window Container */}
       <div className={`w-full max-w-md bg-white ${boxStyle}`}>
         
