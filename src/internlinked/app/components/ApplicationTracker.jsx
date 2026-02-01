@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { KanbanBoard } from './KanbanBoard';
 import { ApplicationTable } from './ApplicationTable';
+import { AssetDrawer } from './AssetDrawer'; // Ensure this file exists
 import { Button } from '@/app/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
-import { Plus, LayoutGrid, Table as TableIcon, X, FileUp, Link as LinkIcon, Trash2 } from 'lucide-react';
+import { Plus, LayoutGrid, Table as TableIcon, X, FileUp, Link as LinkIcon, Trash2, FileText } from 'lucide-react';
 import { createClient } from "@supabase/supabase-js";
 import { toast } from "sonner";
 
@@ -13,11 +14,17 @@ const supabase = createClient(
 );
 
 export function ApplicationTracker({ applications, onUpdateApplications }) {
+    // View & Modal State
     const [view, setView] = useState('kanban');
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-    const [cvFile, setCvFile] = useState(null);
-    const [selectedApp, setSelectedApp] = useState(null);
+    
+    // Asset Drawer State
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    const [activeDrawerApp, setActiveDrawerApp] = useState(null);
 
+    // Form & Upload State
+    const [files, setFiles] = useState([]); 
+    const [selectedApp, setSelectedApp] = useState(null);
     const [formData, setFormData] = useState({
         companyName: '',
         position: '',
@@ -31,26 +38,11 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
     const inputStyle = "w-full border-2 border-zinc-900 p-2 outline-none focus:bg-yellow-50 focus:ring-2 ring-[#EBBB49] transition-all rounded-none font-bold text-sm";
     const labelStyle = "block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-500";
 
-    const handleDownloadAsset = async (fileUrl, fileName) => {
-        if (!fileUrl) return toast.error("NO_ASSET_LINKED");
-        
-        try {
-            const response = await fetch(fileUrl);
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            // Forces the file to download with a clean name
-            link.setAttribute('download', fileName || 'resume_asset.pdf');
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            window.URL.revokeObjectURL(url);
-            toast.success("DOWNLOAD_INITIALIZED");
-        } catch (error) {
-            console.error("Download Error:", error);
-            toast.error("DOWNLOAD_FAILURE");
-        }
+    // OPEN ASSET VAULT (Called from Table or Kanban)
+    const handleOpenDrawer = (e, app) => {
+        e.stopPropagation();
+        setActiveDrawerApp(app);
+        setIsDrawerOpen(true);
     };
 
     const handleEditClick = (app) => {
@@ -67,17 +59,15 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
         setIsAddDialogOpen(true);
     };
 
-
     const closeModal = () => {
         setFormData({ companyName: '', position: '', status: 'saved', jobType: 'internship', jobUrl: '', notes: '', cv_url: null });
-        setCvFile(null);
+        setFiles([]);
         setSelectedApp(null);
         setIsAddDialogOpen(false);
     };
 
     const handleDeleteApplication = async () => {
         if (!selectedApp) return;
-        
         const confirmed = window.confirm("SYSTEM_WARNING: Permanent deletion of record. Proceed?");
         if (!confirmed) return;
 
@@ -101,7 +91,6 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
         if (!user) return toast.error("Log in required");
 
         try {
-            // 1. Deploy/Update Application Record
             const appPayload = {
                 user_id: user.id,
                 companyName: formData.companyName,
@@ -111,6 +100,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 status: formData.status,
                 jobUrl: formData.jobUrl,
                 jobType: formData.jobType,
+                notes: formData.notes
             };
 
             if (selectedApp?.id) appPayload.id = selectedApp.id;
@@ -118,74 +108,69 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             const { data: appData, error: appError } = await supabase
                 .from('applications')
                 .upsert([appPayload])
-                .select()
-                .single();
+                .select().single();
 
             if (appError) throw appError;
 
-            // 2. Handle Asset (Resume) Upload
-            if (cvFile) {
-                const fileExt = cvFile.name.split('.').pop();
-                const fileName = `${user.id}/${appData.id}/${Date.now()}.${fileExt}`;
-                
-                const { error: storageError } = await supabase.storage
-                    .from('cvs')
-                    .upload(fileName, cvFile, { upsert: true });
+            if (files.length > 0) {
+                const uploadPromises = files.map(async (file) => {
+                    const fileName = `${user.id}/${appData.id}/${Date.now()}_${file.name}`;
+                    const { error: storageError } = await supabase.storage
+                        .from('cvs')
+                        .upload(fileName, file, { upsert: true });
 
-                if (storageError) throw storageError;
+                    if (storageError) throw storageError;
 
-                const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(fileName);
-                const publicUrl = urlData.publicUrl;
+                    const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(fileName);
+                    
+                    await supabase.from('files').insert([{
+                        user_id: user.id,
+                        application_id: appData.id,
+                        file_name: file.name,
+                        file_url: urlData.publicUrl,
+                        type: 'document'
+                    }]);
 
-                // 3. Link to 'files' table for relational tracking
-                await supabase.from('files').insert([{
-                    user_id: user.id,
-                    application_id: appData.id,
-                    file_name: cvFile.name,
-                    file_url: publicUrl,
-                    type: 'resume',
-                    mime_type: cvFile.type
-                }]);
+                    return urlData.publicUrl;
+                });
 
-                // 4. Sync application URL fields
-                await supabase.from('applications')
-                    .update({ cv_url: publicUrl, resume_url: publicUrl })
-                    .eq('id', appData.id);
-                
-                appData.cv_url = publicUrl;
+                const urls = await Promise.all(uploadPromises);
+                if (urls.length > 0) {
+                    await supabase.from('applications')
+                        .update({ cv_url: urls[0], resume_url: urls[0] })
+                        .eq('id', appData.id);
+                    appData.cv_url = urls[0];
+                }
             }
 
             onUpdateApplications(appData);
-            toast.success(selectedApp ? "SYSTEM_UPDATED" : "ENTRY_DEPLOYED");
+            toast.success("DATA_STACK_DEPLOYED");
             closeModal();
-
         } catch (error) {
-            console.error("Critical Error:", error);
             toast.error(`SYSTEM_FAILURE: ${error.message}`);
         }
     };
 
     return (
         <div className="h-full flex flex-col relative pb-10">
-            {/* Header Section */}
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-4xl font-black uppercase italic tracking-tighter text-zinc-900">Pipeline_Management</h1>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] italic text-zinc-400">
-                        Active_Internship_Tracking // System_02
+                        Active_Internship_Tracking // System_V3
                     </p>
                 </div>
                 <Button
                     onClick={() => setIsAddDialogOpen(true)}
                     className="bg-[#EBBB49] text-zinc-900 border-2 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all rounded-none font-black uppercase italic px-6 py-6"
                 >
-                    <Plus className="size-5 mr-2 stroke-[3px]" />
-                    Deploy_New_Entry
+                    <Plus className="size-5 mr-2 stroke-[3px]" /> Deploy_New_Entry
                 </Button>
             </div>
 
-            {/* View Switcher Tabs */}
-            <div className="mb-6 flex justify-between items-center">
+            {/* View Switcher */}
+            <div className="mb-6">
                 <Tabs value={view} onValueChange={setView} className="w-fit">
                     <TabsList className="bg-zinc-100 border-2 border-zinc-900 p-1 rounded-none h-auto">
                         <TabsTrigger value="kanban" className="rounded-none data-[state=active]:bg-[#EBBB49] font-black uppercase text-[10px] px-4 py-2">
@@ -198,26 +183,39 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 </Tabs>
             </div>
 
-            {/* Application Display Area */}
+            {/* Content Area */}
             <div className="flex-1 overflow-hidden p-4 bg-zinc-50 border-2 border-zinc-900 shadow-[inset_4px_4px_0px_0px_rgba(0,0,0,0.05)]">
                 {view === 'kanban' ? (
-                    <KanbanBoard applications={applications} onSelectApplication={handleEditClick} />
+                    <KanbanBoard 
+                        applications={applications} 
+                        onSelectApplication={handleEditClick} 
+                        onOpenDrawer={handleOpenDrawer}
+                    />
                 ) : (
-                    <ApplicationTable applications={applications} onSelectApplication={handleEditClick} />
+                    <ApplicationTable 
+                        applications={applications} 
+                        onSelectApplication={handleEditClick} 
+                        onOpenDrawer={handleOpenDrawer}
+                    />
                 )}
             </div>
 
-            {/* Deployment/Edit Modal */}
+            {/* Asset Drawer */}
+            <AssetDrawer 
+                isOpen={isDrawerOpen} 
+                application={activeDrawerApp} 
+                onClose={() => setIsDrawerOpen(false)} 
+            />
+
+            {/* Entry Modal */}
             {isAddDialogOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/60 backdrop-blur-sm p-4">
-                    <div className="bg-[#FDFCF0] border-4 border-zinc-900 p-0 w-full max-w-2xl shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] relative flex flex-col animate-in fade-in zoom-in duration-200">
+                    <div className="bg-[#FDFCF0] border-4 border-zinc-900 w-full max-w-2xl shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] relative animate-in fade-in zoom-in duration-200">
                         <div className="bg-zinc-900 text-white p-4 flex justify-between items-center">
                             <h2 className="font-black uppercase italic tracking-tighter text-lg">
-                                {selectedApp ? 'Modify_Application_Data' : 'Initialize_New_Entry'}
+                                {selectedApp ? 'Modify_Data_Stack' : 'Initialize_New_Entry'}
                             </h2>
-                            <button onClick={closeModal} className="hover:text-[#EBBB49] transition-colors">
-                                <X size={24} strokeWidth={3} />
-                            </button>
+                            <button onClick={closeModal} className="hover:text-[#EBBB49] transition-colors"><X size={24} strokeWidth={3} /></button>
                         </div>
 
                         <form onSubmit={handleAddApplication} className="p-8">
@@ -233,7 +231,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                                     </div>
                                     <div>
                                         <label className={labelStyle}>Current_Status</label>
-                                        <select className={`${inputStyle} bg-white font-bold uppercase cursor-pointer`} value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
+                                        <select className={`${inputStyle} bg-white cursor-pointer`} value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
                                             <option value="saved">SAVED</option>
                                             <option value="applied">APPLIED</option>
                                             <option value="interview">INTERVIEW</option>
@@ -245,12 +243,12 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
 
                                 <div className="space-y-4">
                                     <div>
-                                        <label className={labelStyle}>Asset_Upload (.PDF)</label>
+                                        <label className={labelStyle}>Asset_Upload_Stack (.PDF)</label>
                                         <div className="relative border-2 border-dashed border-zinc-400 p-4 text-center hover:bg-zinc-50 cursor-pointer transition-colors group">
-                                            <input type="file" accept=".pdf" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={(e) => setCvFile(e.target.files[0])} />
+                                            <input type="file" multiple accept=".pdf" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={(e) => setFiles(Array.from(e.target.files))} />
                                             <FileUp className="size-6 mx-auto mb-2 text-zinc-400 group-hover:text-zinc-900" />
-                                            <span className="text-[10px] font-black uppercase text-zinc-500 group-hover:text-zinc-900">
-                                                {cvFile ? cvFile.name : 'Select_Resume_File'}
+                                            <span className="text-[10px] font-black uppercase text-zinc-500">
+                                                {files.length > 0 ? `${files.length}_Files_Queued` : 'Select_Assets'}
                                             </span>
                                         </div>
                                     </div>
@@ -262,29 +260,16 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                                         </div>
                                     </div>
                                 </div>
-
-                                <div className="md:col-span-2">
-                                    <label className={labelStyle}>Internal_Notes</label>
-                                    <textarea className={`${inputStyle} h-20 resize-none`} value={formData.notes} onChange={(e) => setFormData({...formData, notes: e.target.value})} placeholder="Log system notes here..." />
-                                </div>
                             </div>
 
-                            {/* Modal Action Buttons */}
                             <div className="flex gap-4 mt-8">
                                 {selectedApp && (
-                                    <button
-                                        type="button"
-                                        onClick={handleDeleteApplication}
-                                        className="flex-1 border-2 border-zinc-900 bg-white text-red-600 py-4 font-black uppercase italic tracking-widest hover:bg-red-50 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
-                                    >
-                                        <Trash2 className="size-4 inline mr-2" /> Delete_Record
+                                    <button type="button" onClick={handleDeleteApplication} className="flex-1 border-2 border-zinc-900 bg-white text-red-600 py-4 font-black uppercase italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-50 transition-all">
+                                        <Trash2 className="size-4 inline mr-2" /> Purge_Record
                                     </button>
                                 )}
-                                <button
-                                    type="submit"
-                                    className="flex-[2] border-2 border-zinc-900 bg-zinc-900 text-[#EBBB49] py-4 font-black uppercase italic tracking-widest hover:bg-zinc-800 transition-all shadow-[4px_4px_0px_0px_#EBBB49] active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
-                                >
-                                    {selectedApp ? 'Update_Data_Field' : 'Finalize_Deployment'}
+                                <button type="submit" className="flex-[2] border-2 border-zinc-900 bg-zinc-900 text-[#EBBB49] py-4 font-black uppercase italic shadow-[4px_4px_0px_0px_#EBBB49] hover:bg-zinc-800 transition-all">
+                                    {selectedApp ? 'Update_Data_Stack' : 'Finalize_Deployment'}
                                 </button>
                             </div>
                         </form>
