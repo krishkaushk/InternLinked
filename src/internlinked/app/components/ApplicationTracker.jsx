@@ -46,6 +46,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
     };
 
     const handleEditClick = (app) => {
+        console.log("Editing App ID:", app.id);
         setSelectedApp(app);
         setFormData({
             companyName: app.companyName || app.company,
@@ -91,7 +92,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
         if (!user) return toast.error("Log in required");
     
         try {
-            // --- 1. DEPLOY APPLICATION RECORD ---
+            // 1. PREP PAYLOAD
             const appPayload = {
                 user_id: user.id,
                 companyName: formData.companyName,
@@ -101,20 +102,20 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 status: formData.status,
                 jobUrl: formData.jobUrl,
                 jobType: formData.jobType,
-                notes: formData.notes
+                notes: formData.notes,
+                ...(selectedApp?.id && { id: selectedApp.id })
             };
     
-            if (selectedApp?.id) appPayload.id = selectedApp.id;
-    
+            // 2. INITIAL DB DEPLOYMENT
             const { data: appData, error: appError } = await supabase
                 .from('applications')
-                .upsert([appPayload])
-                .select().single();
+                .upsert([appPayload], { onConflict: 'id' })
+                .select()
+                .single();
     
             if (appError) throw appError;
     
-            // --- 2. GAMIFICATION ENGINE (+100 XP & STREAK) ---
-            // Only trigger points for NEW entries, not edits
+            // 3. GAMIFICATION (Only for brand new entries)
             if (!selectedApp) {
                 const { data: profile } = await supabase
                     .from('profiles')
@@ -125,41 +126,31 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 const today = new Date().toISOString().split('T')[0];
                 let newStreak = (profile?.streak || 0);
                 
-                if (!profile?.last_activity) {
-                    newStreak = 1; // First time ever
-                } else {
-                    const lastDate = new Date(profile.last_activity);
+                if (profile?.last_activity) {
                     const yesterday = new Date();
                     yesterday.setDate(yesterday.getDate() - 1);
                     const yesterdayStr = yesterday.toISOString().split('T')[0];
-    
-                    if (profile.last_activity === yesterdayStr) {
-                        newStreak += 1; // Streak maintained
-                    } else if (profile.last_activity !== today) {
-                        newStreak = 1; // Reset if they missed a day
-                    }
+                    if (profile.last_activity === yesterdayStr) newStreak += 1;
+                    else if (profile.last_activity !== today) newStreak = 1;
+                } else {
+                    newStreak = 1;
                 }
     
-                // Update profile with new stats
                 await supabase
                     .from('profiles')
-                    .update({ 
-                        xp: (profile?.xp || 0) + 150, 
-                        streak: newStreak,
-                        last_activity: today 
-                    })
+                    .update({ xp: (profile?.xp || 0) + 100, streak: newStreak, last_activity: today })
                     .eq('id', user.id);
-    
-                toast.success(`+100 XP // STREAK: ${newStreak}_DAYS`);
             }
     
-            // --- 3. ASSET UPLOAD STACK ---
+            // 4. ASSET UPLOAD STACK
+            let finalAppData = { ...appData };
+            
             if (files.length > 0) {
                 const uploadPromises = files.map(async (file) => {
                     const fileName = `${user.id}/${appData.id}/${Date.now()}_${file.name}`;
                     const { error: storageError } = await supabase.storage
                         .from('cvs')
-                        .upload(fileName, file, { upsert: true });
+                        .upload(fileName, file);
     
                     if (storageError) throw storageError;
     
@@ -177,16 +168,23 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 });
     
                 const urls = await Promise.all(uploadPromises);
-                if (urls.length > 0) {
-                    await supabase.from('applications')
-                        .update({ cv_url: urls[0], resume_url: urls[0] })
-                        .eq('id', appData.id);
-                    appData.cv_url = urls[0];
-                }
+                
+                // Update the record with the first file URL and get the REFRESHED object
+                const { data: refreshedApp } = await supabase
+                    .from('applications')
+                    .update({ cv_url: urls[0], resume_url: urls[0] })
+                    .eq('id', appData.id)
+                    .select()
+                    .single();
+                
+                finalAppData = refreshedApp;
             }
     
-            onUpdateApplications(appData);
-            toast.success(selectedApp ? "DATA_STACK_UPDATED" : "NEW_ENTRY_COMMITTED");
+            // 5. SINGLE STATE UPDATE
+            // We only call this ONCE at the very end to prevent UI jitter/duplicates
+            onUpdateApplications(finalAppData);
+            
+            toast.success(selectedApp ? "STACK_UPDATED" : "ASSETS_DEPLOYED");
             closeModal();
         } catch (error) {
             console.error("Critical Failure:", error);

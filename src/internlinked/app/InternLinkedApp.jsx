@@ -87,86 +87,49 @@ export default function InternLinkedApp({ session }) {
         ), { duration: 4000 });
     };
 
-    const handleUpdateApplications = async (updatedData, deletedId) => {
-        // 1. Authenticate User
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-
-        let finalApps = [...applications];
-
-        // 2. Handle Application Database Changes
+    const handleUpdateApplications = (updatedData, deletedId) => {
+        // 1. HANDLE DELETION
         if (deletedId) {
-            // Use unique error name to avoid block-scope collisions
-            const { error: appDeleteError } = await supabase.from('applications').delete().eq('id', deletedId);
-            if (appDeleteError) return toast.error(appDeleteError.message);
-            finalApps = applications.filter(app => app.id !== deletedId);
-        } else {
-            const isEditing = updatedData.id && applications.some(a => a.id === updatedData.id);
-            const dbPayload = {
-                user_id: user.id,
-                companyName: updatedData.companyName,
-                position: updatedData.position,
-                status: updatedData.status,
-                cv_url: updatedData.cv_url,
-                jobType: updatedData.jobType,
-                jobUrl: updatedData.jobUrl
-            };
-
-            if (isEditing) {
-                const { error: appUpdateError } = await supabase.from('applications').update(dbPayload).eq('id', updatedData.id);
-                if (appUpdateError) return toast.error(appUpdateError.message);
-                finalApps = applications.map(a => a.id === updatedData.id ? { ...a, ...updatedData } : a);
-            } else {
-                const { data: newData, error: appInsertError } = await supabase.from('applications').insert([dbPayload]).select();
-                if (appInsertError) return toast.error(appInsertError.message);
-
-                const newApp = {
-                    ...newData[0],
-                    companyName: newData[0].companyName,
-                    position: newData[0].position
-                };
-                finalApps = [newApp, ...applications];
-            }
-        }
-
-        // 3. Calculate Gamification & Streak
-        // Uses the fast Level 1 scaling and correct streak increment logic
-        const progress = calculateUserProgress(finalApps);
-        const newStreakValue = calculateStreak(userStats.lastActivityDate, userStats.currentStreak);
-        const todayISO = new Date().toISOString().split('T')[0]; // Matches Supabase Date type
-
-        // 4. Persist Progress to Profile
-        const { error: profileSyncError } = await supabase
-            .from('profiles')
-            .upsert({
-                id: user.id,
-                xp: progress.xp,
-                level: progress.level,
-                current_streak: newStreakValue,
-                last_activity_date: todayISO
+            setApplications(prev => {
+                const newApps = prev.filter(app => app.id !== deletedId);
+                // Re-calculate stats based on the new list
+                const progress = calculateUserProgress(newApps, mockActivities, mockBadges);
+                setUserStats(prevStats => ({ 
+                    ...prevStats, 
+                    ...progress, 
+                    totalApplications: newApps.length 
+                }));
+                return newApps;
             });
-
-        if (profileSyncError) {
-            console.error("Profile Sync Error:", profileSyncError.message);
-            return toast.error("STATS_SYNC_FAILED");
+            return;
         }
-
-        // 5. Update UI State
-        // Check for level up animation trigger
-        if (progress.level > userStats.level) {
-            triggerLevelUpAnimation(progress.level);
-        }
-
-        setApplications(finalApps);
-        setUserStats(prev => ({
-            ...prev,
-            ...progress,
-            currentStreak: newStreakValue,
-            lastActivityDate: todayISO,
-            totalApplications: finalApps.length
-        }));
-
-        toast.success(deletedId ? "ENTRY_REMOVED" : "XP_SYNCED");
+    
+        // 2. HANDLE ADD / UPDATE
+        // We treat both the same way: remove old version (if any), add new version
+        setApplications(prev => {
+            // Find if it exists and remove it to prevent duplicates
+            const filtered = prev.filter(app => app.id !== updatedData.id);
+            
+            // Map the data to ensure consistency across the app
+            const formattedApp = {
+                ...updatedData,
+                companyName: updatedData.companyName || updatedData.company,
+                position: updatedData.position || updatedData.role,
+                cv_url: updatedData.cv_url || updatedData.resume_url
+            };
+    
+            const newAppsList = [formattedApp, ...filtered];
+            
+            // Update stats immediately
+            const progress = calculateUserProgress(newAppsList, mockActivities, mockBadges);
+            setUserStats(prevStats => ({ 
+                ...prevStats, 
+                ...progress, 
+                totalApplications: newAppsList.length 
+            }));
+    
+            return newAppsList;
+        });
     };
 
     const renderView = () => {
