@@ -17,23 +17,31 @@ export default function App() {
     const [loading, setLoading] = useState(true);
   
     const fetchProfile = async (userId) => {
-        // Use a try/catch to handle cases where the profile doesn't exist yet
+        setLoading(true);
+        
+        // Add a tiny 500ms delay to let the database "breathe" after the upsert
+        await new Promise(resolve => setTimeout(resolve, 500));
+    
         try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('onboarding_completed')
-            .eq('id', userId)
-            .single();
-      
-          if (error) throw error;
-          setProfile(data);
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('onboarding_completed')
+                .eq('id', userId)
+                .single();
+    
+            if (error) {
+                setProfile({ onboarding_completed: false });
+            } else {
+                // CRITICAL: Log this so you can see it in the F12 console
+                console.log("DB returned onboarding status:", data.onboarding_completed);
+                setProfile(data);
+            }
         } catch (err) {
-          console.log("Profile not found, staying in onboarding.");
-          setProfile({ onboarding_completed: false });
+            setProfile({ onboarding_completed: false });
         } finally {
-          setLoading(false);
+            setLoading(false);
         }
-      };
+    };
   
     useEffect(() => {
       supabase.auth.getSession().then(({ data: { session } }) => {
