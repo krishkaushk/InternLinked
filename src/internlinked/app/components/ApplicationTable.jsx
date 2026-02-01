@@ -62,7 +62,6 @@ export function ApplicationTable({ applications, onSelectApplication }) {
                         <TableHead className={tableHeaderStyle}>Corp_Entity</TableHead>
                         <TableHead className={tableHeaderStyle}>Position_Title</TableHead>
                         <TableHead className={tableHeaderStyle}>Status_Flag</TableHead>
-                        <TableHead className={tableHeaderStyle}>Match_Rating</TableHead>
                         <TableHead className={tableHeaderStyle}>Timeline_Log</TableHead>
                         <TableHead className={`${tableHeaderStyle} text-right`}>Actions</TableHead>
                     </TableRow>
@@ -95,17 +94,7 @@ export function ApplicationTable({ applications, onSelectApplication }) {
                                 </Badge>
                             </TableCell>
 
-                            <TableCell className={cellStyle}>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-16 h-1 bg-zinc-100 overflow-hidden">
-                                        <div 
-                                            className="h-full bg-zinc-900" 
-                                            style={{ width: `${app.matchScore || 50}%` }}
-                                        />
-                                    </div>
-                                    <span className="text-[9px] font-black italic">{app.matchScore || 50}%</span>
-                                </div>
-                            </TableCell>
+                          
 
                             <TableCell className={cellStyle}>
                                 <span className="text-[10px] uppercase font-bold text-zinc-400">

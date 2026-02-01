@@ -197,16 +197,15 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-4xl font-black uppercase italic tracking-tighter text-zinc-900">Pipeline_Management</h1>
+                    <h1 className="text-4xl font-black uppercase tracking-tighter text-zinc-900">Application Management</h1>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] italic text-zinc-400">
-                        Active_Internship_Tracking // System_V3
                     </p>
                 </div>
                 <Button
                     onClick={() => setIsAddDialogOpen(true)}
                     className="bg-[#EBBB49] text-zinc-900 border-2 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all rounded-none font-black uppercase italic px-6 py-6"
                 >
-                    <Plus className="size-5 mr-2 stroke-[3px]" /> Deploy_New_Entry
+                    <Plus className="size-5 mr-2 stroke-[3px]" /> Add Application
                 </Button>
             </div>
 
@@ -215,10 +214,10 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 <Tabs value={view} onValueChange={setView} className="w-fit">
                     <TabsList className="bg-zinc-100 border-2 border-zinc-900 p-1 rounded-none h-auto">
                         <TabsTrigger value="kanban" className="rounded-none data-[state=active]:bg-[#EBBB49] font-black uppercase text-[10px] px-4 py-2">
-                            <LayoutGrid className="size-3 mr-2" />Visual_Grid
+                            <LayoutGrid className="size-3 mr-2" />Pipeline
                         </TabsTrigger>
                         <TabsTrigger value="table" className="rounded-none data-[state=active]:bg-[#EBBB49] font-black uppercase text-[10px] px-4 py-2">
-                            <TableIcon className="size-3 mr-2" />Data_Table
+                            <TableIcon className="size-3 mr-2" />Table
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
@@ -294,7 +293,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className={labelStyle}>Portal_Link</label>
+                                        <label className={labelStyle}>Portal Link</label>
                                         <div className="relative">
                                             <LinkIcon className="absolute left-3 top-3 size-4 text-zinc-400" />
                                             <input type="url" className={`${inputStyle} pl-10`} value={formData.jobUrl} onChange={(e) => setFormData({...formData, jobUrl: e.target.value})} placeholder="https://..." />
@@ -306,11 +305,11 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                             <div className="flex gap-4 mt-8">
                                 {selectedApp && (
                                     <button type="button" onClick={handleDeleteApplication} className="flex-1 border-2 border-zinc-900 bg-white text-red-600 py-4 font-black uppercase italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-red-50 transition-all">
-                                        <Trash2 className="size-4 inline mr-2" /> Purge_Record
+                                        <Trash2 className="size-4 inline mr-2" /> Delete
                                     </button>
                                 )}
                                 <button type="submit" className="flex-[2] border-2 border-zinc-900 bg-zinc-900 text-[#EBBB49] py-4 font-black uppercase italic shadow-[4px_4px_0px_0px_#EBBB49] hover:bg-zinc-800 transition-all">
-                                    {selectedApp ? 'Update_Data_Stack' : 'Finalize_Deployment'}
+                                    {selectedApp ? 'Update_Data_Stack' : 'Add Application'}
                                 </button>
                             </div>
                         </form>

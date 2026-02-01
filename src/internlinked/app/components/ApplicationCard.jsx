@@ -38,11 +38,7 @@ export function ApplicationCard({
                             {application.companyName || application.company_name}
                         </p>
                     </div>
-                    {application.matchScore && (
-                        <div className="bg-[#EBBB49] border-2 border-zinc-900 px-1.5 py-0.5 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
-                            <span className="text-[10px] font-black italic">{application.matchScore}%</span>
-                        </div>
-                    )}
+                    
                 </div>
 
                 {/* Body: Location and Type */}
