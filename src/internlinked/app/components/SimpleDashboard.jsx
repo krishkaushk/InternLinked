@@ -3,18 +3,24 @@ import { Trophy, TrendingUp, Zap, Target } from 'lucide-react';
 
 /**
  * SimpleDashboard Component
- * Fixed: Progress bar overflow logic and level-specific XP thresholds.
+ * Fixed: Progress bar overflow logic and real-time activity tracking.
  */
 export function SimpleDashboard({ userStats, activities }) {
-    // destructuring xpIntoLevel to fix the overfilling bar issue
-    const { level, xpIntoLevel, nextLevelXp, totalApplications, currentStreak } = userStats;
+    // Destructure stats to ensure bar resets every level
+    const {
+        level,
+        xpIntoLevel,
+        nextLevelXp,
+        totalApplications,
+        currentStreak
+    } = userStats;
 
-    // Calculate percentage based only on the current level's progress
+    // Calculate percentage based only on XP within the current level
     const progressPercentage = Math.min((xpIntoLevel / nextLevelXp) * 100, 100);
 
     return (
         <div className="space-y-8">
-            {/* 1. Main Level Card - Fixed Overflow */}
+            {/* 1. Main Level Card - Brutalist Brand Version */}
             <div className="bg-white border-4 border-zinc-900 p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div className="space-y-2">
@@ -29,7 +35,7 @@ export function SimpleDashboard({ userStats, activities }) {
                     </div>
                 </div>
 
-                {/* Fixed XP Progress Bar: Uses xpIntoLevel instead of Total XP */}
+                {/* Progress Bar: Locked to level thresholds */}
                 <div className="mt-8 space-y-2">
                     <div className="flex justify-between font-black uppercase text-xs italic">
                         <span>Level_Progress: {xpIntoLevel} / {nextLevelXp} XP</span>
@@ -49,6 +55,7 @@ export function SimpleDashboard({ userStats, activities }) {
 
             {/* 2. Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Total Applications Card */}
                 <div className="bg-white border-4 border-zinc-900 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-between">
                     <div>
                         <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">Total_Apps</p>
@@ -57,6 +64,7 @@ export function SimpleDashboard({ userStats, activities }) {
                     <Target size={28} strokeWidth={3} className="text-zinc-900" />
                 </div>
 
+                {/* Interviews Card */}
                 <div className="bg-white border-4 border-zinc-900 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-between">
                     <div>
                         <p className="text-[10px] font-black uppercase text-zinc-500 mb-1">Interviews</p>
@@ -65,7 +73,7 @@ export function SimpleDashboard({ userStats, activities }) {
                     <Zap size={28} strokeWidth={3} className="text-zinc-900" />
                 </div>
 
-                {/* Streak Card - Updated with Yellow Brand Color */}
+                {/* XP_Streak Card - High-Contrast Brand Yellow */}
                 <div className="bg-[#EBBB49] border-4 border-zinc-900 p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center justify-between">
                     <div>
                         <p className="text-[10px] font-black uppercase text-zinc-900 mb-1">XP_Streak</p>
@@ -75,22 +83,28 @@ export function SimpleDashboard({ userStats, activities }) {
                 </div>
             </div>
 
-            {/* 3. Activity Log */}
+            {/* 3. Activity Log - Clean State Management */}
             <div className="bg-white border-4 border-zinc-900 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-10">
                 <div className="border-b-4 border-zinc-900 p-4 bg-zinc-900">
                     <h3 className="text-white font-black uppercase italic text-sm tracking-widest">Recent_Activity_Logs</h3>
                 </div>
                 <div className="p-2 max-h-64 overflow-y-auto">
-                    {activities.length > 0 ? activities.map((activity, i) => (
-                        <div key={i} className="flex justify-between items-center p-4 border-b-2 border-zinc-100 last:border-0 hover:bg-zinc-50">
-                            <div>
-                                <p className="text-xs font-black uppercase text-zinc-900">{activity.type}</p>
-                                <p className="text-[10px] font-bold text-zinc-400 uppercase">{activity.description}</p>
+                    {activities && activities.length > 0 ? (
+                        activities.map((activity, i) => (
+                            <div key={i} className="flex justify-between items-center p-4 border-b-2 border-zinc-100 last:border-0 hover:bg-zinc-50">
+                                <div>
+                                    <p className="text-xs font-black uppercase text-zinc-900">{activity.type}</p>
+                                    <p className="text-[10px] font-bold text-zinc-400 uppercase">{activity.description}</p>
+                                </div>
+                                <span className="font-black italic text-[#EBBB49] drop-shadow-[1px_1px_0px_rgba(0,0,0,1)]">
+                                    +{activity.xp || 50} XP
+                                </span>
                             </div>
-                            <span className="font-black italic text-[#EBBB49] drop-shadow-[1px_1px_0px_rgba(0,0,0,1)]">+{activity.xp} XP</span>
+                        ))
+                    ) : (
+                        <div className="p-8 text-center text-zinc-300 font-black uppercase italic text-xs">
+                            No_Recent_Activity_Detected
                         </div>
-                    )) : (
-                        <div className="p-8 text-center text-zinc-300 font-black uppercase italic text-xs">No_Recent_Activity_Detected</div>
                     )}
                 </div>
             </div>
