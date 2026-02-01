@@ -94,7 +94,19 @@ export function ApplicationTable({ applications, onSelectApplication }) {
                                     {statusConfig[app.status]?.label || app.status?.toUpperCase()}
                                 </Badge>
                             </TableCell>
-                            
+
+                            <TableCell className={cellStyle}>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-16 h-1 bg-zinc-100 overflow-hidden">
+                                        <div 
+                                            className="h-full bg-zinc-900" 
+                                            style={{ width: `${app.matchScore || 50}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[9px] font-black italic">{app.matchScore || 50}%</span>
+                                </div>
+                            </TableCell>
+
                             <TableCell className={cellStyle}>
                                 <span className="text-[10px] uppercase font-bold text-zinc-400">
                                     {safeFormat(app.created_at || app.dateAdded)}
