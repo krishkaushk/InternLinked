@@ -197,9 +197,9 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-4xl font-black uppercase italic tracking-tighter text-zinc-900">Application Manager</h1>
+                    <h1 className="text-4xl font-black uppercase italic tracking-tighter text-zinc-900">Pipeline_Management</h1>
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] italic text-zinc-400">
-                        Internship Tracking
+                        Active_Internship_Tracking // System_V3
                     </p>
                 </div>
                 <Button
@@ -215,10 +215,10 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 <Tabs value={view} onValueChange={setView} className="w-fit">
                     <TabsList className="bg-zinc-100 border-2 border-zinc-900 p-1 rounded-none h-auto">
                         <TabsTrigger value="kanban" className="rounded-none data-[state=active]:bg-[#EBBB49] font-black uppercase text-[10px] px-4 py-2">
-                            <LayoutGrid className="size-3 mr-2" />Grid View
+                            <LayoutGrid className="size-3 mr-2" />Visual_Grid
                         </TabsTrigger>
                         <TabsTrigger value="table" className="rounded-none data-[state=active]:bg-[#EBBB49] font-black uppercase text-[10px] px-4 py-2">
-                            <TableIcon className="size-3 mr-2" />Table View
+                            <TableIcon className="size-3 mr-2" />Data_Table
                         </TabsTrigger>
                     </TabsList>
                 </Tabs>
@@ -227,9 +227,10 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             {/* Content Area */}
             <div className="flex-1 overflow-hidden p-4 bg-zinc-50 border-2 border-zinc-900 shadow-[inset_4px_4px_0px_0px_rgba(0,0,0,0.05)]">
                 {view === 'kanban' ? (
-                    <KanbanBoard
-                        applications={applications}
-                        onUpdateStatus={onUpdateApplications} // Ensure this prop name is 'onUpdateStatus'
+                    <KanbanBoard 
+                        applications={applications} 
+                        onSelectApplication={handleEditClick} 
+                        onOpenDrawer={handleOpenDrawer}
                     />
                 ) : (
                     <ApplicationTable 
@@ -270,7 +271,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                                         <input required className={inputStyle} value={formData.position} onChange={(e) => setFormData({...formData, position: e.target.value})} placeholder="e.g. Software Intern" />
                                     </div>
                                     <div>
-                                        <label className={labelStyle}>Current Status</label>
+                                        <label className={labelStyle}>Current_Status</label>
                                         <select className={`${inputStyle} bg-white cursor-pointer`} value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
                                             <option value="saved">SAVED</option>
                                             <option value="applied">APPLIED</option>
