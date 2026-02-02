@@ -184,7 +184,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             // We only call this ONCE at the very end to prevent UI jitter/duplicates
             onUpdateApplications(finalAppData);
             
-            toast.success(selectedApp ? "STACK_UPDATED" : "ASSETS_DEPLOYED");
+            toast.success(selectedApp = "Uploaded");
             closeModal();
         } catch (error) {
             console.error("Critical Failure:", error);
@@ -262,15 +262,15 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-4">
                                     <div>
-                                        <label className={labelStyle}>Corp_Entity</label>
+                                        <label className={labelStyle}>Company</label>
                                         <input required className={inputStyle} value={formData.companyName} onChange={(e) => setFormData({...formData, companyName: e.target.value})} placeholder="e.g. NVIDIA" />
                                     </div>
                                     <div>
-                                        <label className={labelStyle}>Target_Role</label>
+                                        <label className={labelStyle}>Role</label>
                                         <input required className={inputStyle} value={formData.position} onChange={(e) => setFormData({...formData, position: e.target.value})} placeholder="e.g. Software Intern" />
                                     </div>
                                     <div>
-                                        <label className={labelStyle}>Current_Status</label>
+                                        <label className={labelStyle}>Current Status</label>
                                         <select className={`${inputStyle} bg-white cursor-pointer`} value={formData.status} onChange={(e) => setFormData({...formData, status: e.target.value})}>
                                             <option value="saved">SAVED</option>
                                             <option value="applied">APPLIED</option>
@@ -283,7 +283,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
 
                                 <div className="space-y-4">
                                     <div>
-                                        <label className={labelStyle}>Asset_Upload_Stack (.PDF)</label>
+                                        <label className={labelStyle}>Upload Asset (.PDF)</label>
                                         <div className="relative border-2 border-dashed border-zinc-400 p-4 text-center hover:bg-zinc-50 cursor-pointer transition-colors group">
                                             <input type="file" multiple accept=".pdf" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={(e) => setFiles(Array.from(e.target.files))} />
                                             <FileUp className="size-6 mx-auto mb-2 text-zinc-400 group-hover:text-zinc-900" />
@@ -293,7 +293,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className={labelStyle}>Portal Link</label>
+                                        <label className={labelStyle}>Link</label>
                                         <div className="relative">
                                             <LinkIcon className="absolute left-3 top-3 size-4 text-zinc-400" />
                                             <input type="url" className={`${inputStyle} pl-10`} value={formData.jobUrl} onChange={(e) => setFormData({...formData, jobUrl: e.target.value})} placeholder="https://..." />
