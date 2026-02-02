@@ -59,10 +59,10 @@ export function ApplicationTable({ applications, onSelectApplication }) {
             <Table>
                 <TableHeader>
                     <TableRow className="hover:bg-transparent border-none">
-                        <TableHead className={tableHeaderStyle}>Corp_Entity</TableHead>
-                        <TableHead className={tableHeaderStyle}>Position_Title</TableHead>
-                        <TableHead className={tableHeaderStyle}>Status_Flag</TableHead>
-                        <TableHead className={tableHeaderStyle}>Timeline_Log</TableHead>
+                        <TableHead className={tableHeaderStyle}>Company</TableHead>
+                        <TableHead className={tableHeaderStyle}>Position</TableHead>
+                        <TableHead className={tableHeaderStyle}>Status</TableHead>
+                        <TableHead className={tableHeaderStyle}>Date Added</TableHead>
                         <TableHead className={`${tableHeaderStyle} text-right`}>Actions</TableHead>
                     </TableRow>
                 </TableHeader>
