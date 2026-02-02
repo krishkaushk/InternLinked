@@ -24,7 +24,7 @@ export function SimpleDashboard({ userStats, activities }) {
             <div className="bg-white border-4 border-zinc-900 p-8 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                     <div className="space-y-2">
-                        <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-zinc-500">Your Progess</h2>
+                        <h2 className="text-[12px] font-black uppercase tracking-[0.2em] text-zinc-500">Your Progress</h2>
                         <div className="flex items-baseline gap-2">
                             <span className="text-7xl font-black italic tracking-tighter uppercase">Level {level}</span>
                         </div>
