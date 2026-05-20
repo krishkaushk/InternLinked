@@ -88,7 +88,7 @@ export function KanbanBoard({
                             {columnApps.length === 0 && (
                                 <div className="py-20 text-center border-2 border-dashed border-zinc-200 group">
                                     <p className="text-[9px] font-black uppercase tracking-widest text-zinc-300 group-hover:text-zinc-400 transition-colors italic">
-                                        Empty_Node
+                                        Empty
                                     </p>
                                 </div>
                             )}

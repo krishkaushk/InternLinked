@@ -99,7 +99,7 @@ export function ProfileView({ profile, onUpdateProfile }) {
                     <Card className={`p-6 bg-white ${boxStyle}`}>
                         <div className="flex items-center gap-2 border-b-2 border-zinc-100 pb-4 mb-4">
                             <Briefcase className="text-[#EBBB49]" />
-                            <h2 className="font-black uppercase text-sm tracking-widest">Skills_Matrix</h2>
+                            <h2 className="font-black uppercase text-sm tracking-widest">Skills Matrix</h2>
                         </div>
                         <div className="flex flex-wrap gap-2">
                             {profile.skills?.map((skill) => (
@@ -129,7 +129,7 @@ export function ProfileView({ profile, onUpdateProfile }) {
 
                     {isEditing && (
                         <Button className={`w-full py-6 ${yellowBtn}`} onClick={handleSave}>
-                            Save_Updates_To_Disk
+                            Save
                         </Button>
                     )}
                 </div>

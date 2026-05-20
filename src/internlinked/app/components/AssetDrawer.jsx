@@ -28,7 +28,7 @@ export function AssetDrawer({ application, isOpen, onClose }) {
                     setAssets(data || []);
                 } catch (err) {
                     console.error("Fetch Error:", err);
-                    toast.error("VAULT_ACCESS_DENIED");
+                    toast.error("Couldn't load files");
                 } finally {
                     setLoading(false);
                 }
@@ -39,7 +39,7 @@ export function AssetDrawer({ application, isOpen, onClose }) {
 
     // Robust download handler to bypass CORS/browser blocks
     const handleDownload = async (fileUrl, fileName) => {
-        const toastId = toast.loading("INITIALIZING_DOWNLOAD...");
+        const toastId = toast.loading("Downloading...");
         try {
             const res = await fetch(fileUrl);
             if (!res.ok) throw new Error("Network response was not ok");
@@ -56,18 +56,18 @@ export function AssetDrawer({ application, isOpen, onClose }) {
             // Cleanup
             document.body.removeChild(link);
             window.URL.revokeObjectURL(blobUrl);
-            toast.success("DOWNLOAD_COMPLETE", { id: toastId });
+            toast.success("Downloaded", { id: toastId });
         } catch (e) { 
             console.error("Download Error:", e);
-            toast.error("DOWNLOAD_FAILED", { id: toastId }); 
+            toast.error("Download failed", { id: toastId });
         }
     };
 
     const handleDelete = async (fileId, fileUrl) => {
-        const confirm = window.confirm("SYSTEM_WARNING: Permanent asset deletion. Proceed?");
+        const confirm = window.confirm("Delete this file? This can't be undone.");
         if (!confirm) return;
 
-        const toastId = toast.loading("PURGING_ASSET...");
+        const toastId = toast.loading("Deleting...");
         try {
             // 1. Extract storage path from URL
             // Adjust the split string if your bucket name is different from 'cvs'
@@ -83,10 +83,10 @@ export function AssetDrawer({ application, isOpen, onClose }) {
             if (error) throw error;
 
             setAssets(prev => prev.filter(a => a.id !== fileId));
-            toast.success("ASSET_PURGED", { id: toastId });
+            toast.success("Deleted", { id: toastId });
         } catch (err) {
             console.error("Delete Error:", err);
-            toast.error("PURGE_FAILED", { id: toastId });
+            toast.error("Delete failed", { id: toastId });
         }
     };
 
@@ -97,9 +97,9 @@ export function AssetDrawer({ application, isOpen, onClose }) {
             {/* Drawer Header */}
             <div className="bg-zinc-900 text-white p-6 flex justify-between items-center">
                 <div>
-                    <h2 className="font-black uppercase italic tracking-tighter text-xl">Asset_Vault</h2>
+                    <h2 className="font-black uppercase italic tracking-tighter text-xl">Files</h2>
                     <p className="text-[10px] text-[#EBBB49] font-bold uppercase tracking-widest">
-                        {application?.companyName || 'Unknown_Entity'} // Entry_Assets
+                        {application?.companyName || 'Unknown'}
                     </p>
                 </div>
                 <button 
@@ -115,11 +115,11 @@ export function AssetDrawer({ application, isOpen, onClose }) {
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-20 gap-4">
                         <Loader2 className="animate-spin text-zinc-900 size-8" />
-                        <span className="text-[10px] font-black uppercase text-zinc-400">Syncing_Vault...</span>
+                        <span className="text-[10px] font-black uppercase text-zinc-400">Loading...</span>
                     </div>
                 ) : assets.length === 0 ? (
                     <div className="text-center py-20 border-2 border-dashed border-zinc-200 bg-zinc-50/50">
-                        <p className="text-[10px] font-black uppercase text-zinc-400 italic">No_Assets_Deployed_To_Stack</p>
+                        <p className="text-[10px] font-black uppercase text-zinc-400 italic">No files uploaded</p>
                     </div>
                 ) : (
                     <div className="space-y-4">
@@ -165,7 +165,7 @@ export function AssetDrawer({ application, isOpen, onClose }) {
             {/* Footer Status */}
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t-2 border-zinc-900 bg-white">
                 <p className="text-[8px] font-black uppercase text-center text-zinc-400">
-                    Vault_Encrypted // <span className="text-black-600">Intern</span><span className="text-[#EBBB49]">Linked</span>_Asset_Management
+                    <span className="text-black-600">Intern</span><span className="text-[#EBBB49]">Linked</span> File Management
                 </p>
             </div>
         </div>

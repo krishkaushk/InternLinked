@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { KanbanBoard } from './KanbanBoard';
 import { ApplicationTable } from './ApplicationTable';
 import { AssetDrawer } from './AssetDrawer'; // Ensure this file exists
@@ -32,8 +32,39 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
         jobType: 'internship',
         jobUrl: '',
         notes: '',
+        location: '',
         cv_url: null
     });
+
+    const [locationSuggestions, setLocationSuggestions] = useState([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const locationDebounce = useRef(null);
+
+    const handleLocationInput = (value) => {
+        setFormData(f => ({ ...f, location: value }));
+        clearTimeout(locationDebounce.current);
+        if (value.length < 1) { setLocationSuggestions([]); setShowSuggestions(false); return; }
+        locationDebounce.current = setTimeout(async () => {
+            try {
+                const res = await fetch(
+                    `https://photon.komoot.io/api/?q=${encodeURIComponent(value)}&limit=5&lang=en`
+                );
+                const data = await res.json();
+                setLocationSuggestions(data.features || []);
+                setShowSuggestions((data.features || []).length > 0);
+            } catch { /* silently fail */ }
+        }, 150);
+    };
+
+    const formatLocation = (item) => {
+        const p = item.properties;
+        const city = p.city || p.name;
+        const state = p.state;
+        const country = p.country;
+        if (city && state) return `${city}, ${state}`;
+        if (city && country) return `${city}, ${country}`;
+        return city || p.name || '';
+    };
 
     const inputStyle = "w-full border-2 border-zinc-900 p-2 outline-none focus:bg-yellow-50 focus:ring-2 ring-[#EBBB49] transition-all rounded-none font-bold text-sm";
     const labelStyle = "block text-[10px] font-black uppercase mb-1 tracking-widest text-zinc-500";
@@ -49,19 +80,20 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
         console.log("Editing App ID:", app.id);
         setSelectedApp(app);
         setFormData({
-            companyName: app.companyName || app.company,
-            position: app.position || app.role,
+            companyName: app.companyName,
+            position: app.position,
             status: app.status,
             jobType: app.jobType || 'internship',
             jobUrl: app.jobUrl || '',
             notes: app.notes || '',
-            cv_url: app.cv_url || app.resume_url 
+            location: app.location || '',
+            cv_url: app.cv_url || null
         });
         setIsAddDialogOpen(true);
     };
 
     const closeModal = () => {
-        setFormData({ companyName: '', position: '', status: 'saved', jobType: 'internship', jobUrl: '', notes: '', cv_url: null });
+        setFormData({ companyName: '', position: '', status: 'saved', jobType: 'internship', jobUrl: '', notes: '', location: '', cv_url: null });
         setFiles([]);
         setSelectedApp(null);
         setIsAddDialogOpen(false);
@@ -69,7 +101,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
 
     const handleDeleteApplication = async () => {
         if (!selectedApp) return;
-        const confirmed = window.confirm("SYSTEM_WARNING: Permanent deletion of record. Proceed?");
+        const confirmed = window.confirm("Delete this application? This can't be undone.");
         if (!confirmed) return;
 
         const { error } = await supabase
@@ -81,7 +113,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             toast.error(`DELETE_ERROR: ${error.message}`);
         } else {
             onUpdateApplications(null, selectedApp.id);
-            toast.success("ENTRY_PURGED_SUCCESSFULLY");
+            toast.success("Deleted");
             closeModal();
         }
     };
@@ -96,13 +128,12 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
             const appPayload = {
                 user_id: user.id,
                 companyName: formData.companyName,
-                company: formData.companyName, 
                 position: formData.position,
-                role: formData.position,
                 status: formData.status,
                 jobUrl: formData.jobUrl,
                 jobType: formData.jobType,
                 notes: formData.notes,
+                location: formData.location,
                 ...(selectedApp?.id && { id: selectedApp.id })
             };
     
@@ -115,34 +146,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
     
             if (appError) throw appError;
     
-            // 3. GAMIFICATION (Only for brand new entries)
-            if (!selectedApp) {
-                const { data: profile } = await supabase
-                    .from('profiles')
-                    .select('xp, streak, last_activity')
-                    .eq('id', user.id)
-                    .single();
-    
-                const today = new Date().toISOString().split('T')[0];
-                let newStreak = (profile?.streak || 0);
-                
-                if (profile?.last_activity) {
-                    const yesterday = new Date();
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const yesterdayStr = yesterday.toISOString().split('T')[0];
-                    if (profile.last_activity === yesterdayStr) newStreak += 1;
-                    else if (profile.last_activity !== today) newStreak = 1;
-                } else {
-                    newStreak = 1;
-                }
-    
-                await supabase
-                    .from('profiles')
-                    .update({ xp: (profile?.xp || 0) + 100, streak: newStreak, last_activity: today })
-                    .eq('id', user.id);
-            }
-    
-            // 4. ASSET UPLOAD STACK
+            // 3. ASSET UPLOAD STACK
             let finalAppData = { ...appData };
             
             if (files.length > 0) {
@@ -172,7 +176,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 // Update the record with the first file URL and get the REFRESHED object
                 const { data: refreshedApp } = await supabase
                     .from('applications')
-                    .update({ cv_url: urls[0], resume_url: urls[0] })
+                    .update({ cv_url: urls[0] })
                     .eq('id', appData.id)
                     .select()
                     .single();
@@ -180,11 +184,10 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                 finalAppData = refreshedApp;
             }
     
-            // 5. SINGLE STATE UPDATE
-            // We only call this ONCE at the very end to prevent UI jitter/duplicates
+            // 4. SINGLE STATE UPDATE
             onUpdateApplications(finalAppData);
             
-            toast.success(selectedApp = "Uploaded");
+            toast.success("Uploaded");
             closeModal();
         } catch (error) {
             console.error("Critical Failure:", error);
@@ -253,7 +256,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                     <div className="bg-[#FDFCF0] border-4 border-zinc-900 w-full max-w-2xl shadow-[16px_16px_0px_0px_rgba(0,0,0,1)] relative animate-in fade-in zoom-in duration-200">
                         <div className="bg-zinc-900 text-white p-4 flex justify-between items-center">
                             <h2 className="font-black uppercase italic tracking-tighter text-lg">
-                                {selectedApp ? 'Modify_Data_Stack' : 'Initialize_New_Entry'}
+                                {selectedApp ? 'Edit Application' : 'Add Application'}
                             </h2>
                             <button onClick={closeModal} className="hover:text-[#EBBB49] transition-colors"><X size={24} strokeWidth={3} /></button>
                         </div>
@@ -268,6 +271,34 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                                     <div>
                                         <label className={labelStyle}>Role</label>
                                         <input required className={inputStyle} value={formData.position} onChange={(e) => setFormData({...formData, position: e.target.value})} placeholder="e.g. Software Intern" />
+                                    </div>
+                                    <div className="relative">
+                                        <label className={labelStyle}>Location</label>
+                                        <input
+                                            className={inputStyle}
+                                            value={formData.location}
+                                            onChange={(e) => handleLocationInput(e.target.value)}
+                                            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                                            placeholder="e.g. San Francisco, CA"
+                                            autoComplete="off"
+                                        />
+                                        {showSuggestions && (
+                                            <div className="absolute z-50 w-full bg-white border-2 border-t-0 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] max-h-48 overflow-y-auto">
+                                                {locationSuggestions.map((s, i) => (
+                                                    <button
+                                                        key={i}
+                                                        type="button"
+                                                        className="w-full text-left px-3 py-2 text-xs font-bold hover:bg-[#EBBB49] border-b border-zinc-100 last:border-0 uppercase"
+                                                        onMouseDown={() => {
+                                                            setFormData(f => ({ ...f, location: formatLocation(s) }));
+                                                            setShowSuggestions(false);
+                                                        }}
+                                                    >
+                                                        {formatLocation(s)}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                     <div>
                                         <label className={labelStyle}>Current Status</label>
@@ -288,7 +319,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                                             <input type="file" multiple accept=".pdf" className="absolute inset-0 opacity-0 cursor-pointer z-10" onChange={(e) => setFiles(Array.from(e.target.files))} />
                                             <FileUp className="size-6 mx-auto mb-2 text-zinc-400 group-hover:text-zinc-900" />
                                             <span className="text-[10px] font-black uppercase text-zinc-500">
-                                                {files.length > 0 ? `${files.length}_Files_Queued` : 'Select_Assets'}
+                                                {files.length > 0 ? `${files.length} files selected` : 'Select files'}
                                             </span>
                                         </div>
                                     </div>
@@ -309,7 +340,7 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                                     </button>
                                 )}
                                 <button type="submit" className="flex-[2] border-2 border-zinc-900 bg-zinc-900 text-[#EBBB49] py-4 font-black uppercase italic shadow-[4px_4px_0px_0px_#EBBB49] hover:bg-zinc-800 transition-all">
-                                    {selectedApp ? 'Update_Data_Stack' : 'Add Application'}
+                                    {selectedApp ? 'Update' : 'Add Application'}
                                 </button>
                             </div>
                         </form>

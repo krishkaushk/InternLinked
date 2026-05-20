@@ -67,14 +67,14 @@ export function ApplicationDetail({ application, open, onClose, onUpdateStatus, 
                         {application.position}
                     </SheetTitle>
                     <p className="text-xl font-bold text-[#EBBB49] mt-2 opacity-90 uppercase tracking-tighter">
-                        {application.companyName || application.company_name}
+                        {application.companyName}
                     </p>
                 </div>
 
                 <div className="p-8 space-y-8">
                     {/* Status Select */}
                     <div>
-                        <label className={labelStyle}>Deployment_Status</label>
+                        <label className={labelStyle}>Status</label>
                         <Select
                             value={application.status}
                             onValueChange={(value) => onUpdateStatus(application.id, value)}
@@ -98,11 +98,11 @@ export function ApplicationDetail({ application, open, onClose, onUpdateStatus, 
                             <label className={labelStyle}>Location</label>
                             <div className="flex items-center gap-2 font-black text-sm uppercase">
                                 <MapPin size={14} className="text-[#EBBB49]" />
-                                {application.location || "Remote_Node"}
+                                {application.location || "Set Location"}
                             </div>
                         </div>
                         <div className={sectionStyle}>
-                            <label className={labelStyle}>Contract_Type</label>
+                            <label className={labelStyle}>Job Type</label>
                             <div className="font-black text-sm uppercase">
                                 {application.jobType || "Internship"}
                             </div>
@@ -112,16 +112,16 @@ export function ApplicationDetail({ application, open, onClose, onUpdateStatus, 
                     {/* Timeline */}
                     <div className={sectionStyle}>
                         <h4 className="font-black uppercase italic text-sm mb-4 border-b-2 border-zinc-100 pb-2 flex items-center gap-2">
-                            <Calendar size={16} className="text-[#EBBB49]" /> Event_Log
+                            <Calendar size={16} className="text-[#EBBB49]" /> Event Log
                         </h4>
                         <div className="space-y-4">
                             <div className="flex justify-between items-center">
                                 <span className="text-[10px] font-black uppercase text-zinc-400">Initialized</span>
-                                <span className="text-xs font-bold">{safeFormat(application.dateAdded || application.created_at, 'MMM d, yyyy')}</span>
+                                <span className="text-xs font-bold">{safeFormat(application.created_at, 'MMM d, yyyy')}</span>
                             </div>
                             {application.deadline && (
                                 <div className="flex justify-between items-center text-red-600">
-                                    <span className="text-[10px] font-black uppercase">Cutoff_Date</span>
+                                    <span className="text-[10px] font-black uppercase">Deadline</span>
                                     <span className="text-xs font-black italic underline">{safeFormat(application.deadline, 'MMM d, yyyy')}</span>
                                 </div>
                             )}
@@ -131,7 +131,7 @@ export function ApplicationDetail({ application, open, onClose, onUpdateStatus, 
                     {/* Notes Field */}
                     {application.notes && (
                         <div>
-                            <label className={labelStyle}>Internal_Intelligence</label>
+                            <label className={labelStyle}>Notes</label>
                             <div className="bg-white border-2 border-zinc-900 p-4 shadow-[4px_4px_0px_0px_#EBBB49] font-bold text-sm leading-relaxed italic border-l-8">
                                 "{application.notes}"
                             </div>
@@ -145,7 +145,7 @@ export function ApplicationDetail({ application, open, onClose, onUpdateStatus, 
                                 onClick={() => window.open(application.jobUrl, '_blank')}
                                 className="w-full bg-white text-zinc-900 border-2 border-zinc-900 rounded-none font-black uppercase italic shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-zinc-50 active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
                             >
-                                <ExternalLink size={16} className="mr-2" /> Open_Asset_Source
+                                <ExternalLink size={16} className="mr-2" /> View Job Posting
                             </Button>
                         )}
 

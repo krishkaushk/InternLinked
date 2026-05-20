@@ -46,7 +46,6 @@ export function AddApplicationDialog({
             companyName: formData.companyName,
             position: formData.position,
             status: formData.status,
-            dateAdded: new Date(),
             location: formData.location,
             jobType: formData.jobType,
             salary: formData.salary || undefined,

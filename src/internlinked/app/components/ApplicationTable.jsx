@@ -76,10 +76,10 @@ export function ApplicationTable({ applications, onSelectApplication }) {
                             <TableCell className={cellStyle}>
                                 <div className="flex flex-col">
                                     <span className="uppercase italic font-black text-zinc-900">
-                                        {app.companyName || app.company}
+                                        {app.companyName}
                                     </span>
                                     <span className="text-[9px] text-zinc-400 uppercase tracking-tighter">
-                                        {app.location || 'Remote_Node'}
+                                        {app.location || 'Set Location'}
                                     </span>
                                 </div>
                             </TableCell>
@@ -98,7 +98,7 @@ export function ApplicationTable({ applications, onSelectApplication }) {
 
                             <TableCell className={cellStyle}>
                                 <span className="text-[10px] uppercase font-bold text-zinc-400">
-                                    {safeFormat(app.created_at || app.dateAdded)}
+                                    {safeFormat(app.created_at)}
                                 </span>
                             </TableCell>
 
@@ -148,7 +148,7 @@ export function ApplicationTable({ applications, onSelectApplication }) {
             {applications.length === 0 && (
                 <div className="py-20 text-center border-b border-zinc-200">
                     <p className="text-[10px] font-black uppercase tracking-widest text-zinc-300 italic">
-                        No_Records_In_Database
+                        No applications yet
                     </p>
                 </div>
             )}

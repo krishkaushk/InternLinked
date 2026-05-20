@@ -72,11 +72,7 @@ export default function InternLinkedApp({ session }) {
             if (appsError) {
                 console.error("Apps Fetch Error:", appsError.message);
             } else if (apps) {
-                const mappedApps = apps.map(app => ({
-                    ...app,
-                    companyName: app.companyName || app.company,
-                    position: app.position || app.role
-                }));
+                const mappedApps = apps.map(app => ({ ...app }));
 
                 setApplications(mappedApps);
 
@@ -86,8 +82,8 @@ export default function InternLinkedApp({ session }) {
                 setUserStats(prev => ({
                     ...prev,
                     ...progress,
-                    currentStreak: profileData?.current_streak || 0,
-                    lastActivityDate: profileData?.last_activity_date,
+                    currentStreak: profileData?.streak || 0,
+                    lastActivityDate: profileData?.last_activity,
                     totalApplications: mappedApps.length
                 }));
             }
@@ -136,10 +132,11 @@ export default function InternLinkedApp({ session }) {
             activityDesc = `Removed application entry`;
         } else {
             const isEditing = updatedData.id && applications.some(a => a.id === updatedData.id);
+            const alreadySaved = updatedData.id && !isEditing;
             const dbPayload = {
                 user_id: user.id,
-                companyName: updatedData.companyName || updatedData.company,
-                position: updatedData.position || updatedData.role,
+                companyName: updatedData.companyName,
+                position: updatedData.position,
                 status: updatedData.status,
                 cv_url: updatedData.cv_url
             };
@@ -150,6 +147,11 @@ export default function InternLinkedApp({ session }) {
                 finalApps = applications.map(a => a.id === updatedData.id ? { ...a, ...updatedData } : a);
                 activityType = 'UPDATE';
                 activityDesc = `Updated ${dbPayload.companyName}`;
+            } else if (alreadySaved) {
+                // Already inserted to DB by ApplicationTracker — just update local state
+                finalApps = [updatedData, ...applications];
+                activityType = 'APPLICATION';
+                activityDesc = `Applied to ${dbPayload.companyName}`;
             } else {
                 const { data: newData, error: appInsertError } = await supabase.from('applications').insert([dbPayload]).select();
                 if (appInsertError) return toast.error(appInsertError.message);
@@ -171,13 +173,13 @@ export default function InternLinkedApp({ session }) {
                 id: user.id,
                 xp: Math.round(progress.xp || 0),
                 level: Math.round(progress.level || 1),
-                current_streak: Math.round(newStreakValue || 0), // MATCHES THE NEW SQL COLUMN
-                last_activity_date: todayISO
+                streak: Math.round(newStreakValue || 0),
+                last_activity: todayISO
             });
 
         if (profileSyncError) {
             console.error("400 Error Details:", profileSyncError);
-            return toast.error("STATS_SYNC_FAILED");
+            return toast.error("Sync failed");
         }
 
         const logPayload = {
@@ -210,7 +212,7 @@ export default function InternLinkedApp({ session }) {
             setActivities(prev => [newLog, ...prev].slice(0, 5));
         }
 
-        toast.success(deletedId ? "ENTRY_REMOVED" : "XP_SYNCED");
+        toast.success(deletedId ? "Deleted" : "Saved");
     };
 
     const renderView = () => {
@@ -224,7 +226,7 @@ export default function InternLinkedApp({ session }) {
 
     return (
         <div className="flex h-screen w-full bg-[#FCFBF4] overflow-hidden">
-            <Navigation currentView={currentView} onViewChange={setCurrentView} userStats={userStats} />
+            <Navigation currentView={currentView} onViewChange={setCurrentView} userStats={userStats} profile={profile} />
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <div className="bg-white border-b-4 border-zinc-900 px-6 py-4 flex justify-between items-center z-10">
                     <h1 className="text-4xl font-black italic tracking-tighter uppercase">

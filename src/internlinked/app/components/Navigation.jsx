@@ -1,7 +1,7 @@
 import React from 'react';
 import { LayoutGrid, Target, Briefcase, User } from 'lucide-react';
 
-export function Navigation({ currentView, onViewChange, userStats }) {
+export function Navigation({ currentView, onViewChange, userStats, profile }) {
     // Destructuring to ensure we use the correct level-specific XP
     const { level, xpIntoLevel, nextLevelXp } = userStats;
 
@@ -23,7 +23,7 @@ export function Navigation({ currentView, onViewChange, userStats }) {
                         <User className="text-zinc-900 size-5" strokeWidth={3} />
                     </div>
                     <div>
-                        <h2 className="font-black uppercase text-sm leading-none">Felix Kongyuy</h2>
+                        <h2 className="font-black uppercase text-sm leading-none">{profile?.name || profile?.full_name || 'User'}</h2>
                         <span className="text-[10px] font-bold uppercase text-zinc-500">Level_{level}</span>
                     </div>
                 </div>

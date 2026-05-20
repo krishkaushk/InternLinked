@@ -46,7 +46,7 @@ export function ApplicationCard({
                 <div className="flex flex-wrap gap-2 items-center">
                     <div className="flex items-center gap-1 text-[10px] font-bold text-zinc-500">
                         <MapPin className="size-3 stroke-[3px]" />
-                        <span className="uppercase">{application.location || 'Remote Node'}</span>
+                        <span className="uppercase">{application.location || 'Set Location'}</span>
                     </div>
                     <Badge className="bg-zinc-900 text-white rounded-none border-none text-[8px] font-black uppercase px-1.5 py-0 h-4 flex items-center">
                         {application.jobType || 'Internship'}
@@ -85,7 +85,7 @@ export function ApplicationCard({
                         }`}
                     >
                         <FileText className="size-3" />
-                        <span>{application.cv_url ? "Manage_Assets" : "Add_Assets"}</span>
+                        <span>{application.cv_url ? "Manage Files" : "Add Files"}</span>
                     </button>
                     
                     {application.jobUrl && (
