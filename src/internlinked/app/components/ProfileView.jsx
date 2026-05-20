@@ -7,23 +7,68 @@ import { Separator } from '@/app/components/ui/separator';
 import {
     User, Mail, Phone, MapPin, Briefcase,
     GraduationCap, FileText, Plus, Edit,
-    Upload, CheckCircle, X, Calendar, BookOpen
+    Upload, CheckCircle, X, Calendar, BookOpen, Loader2, ExternalLink
 } from 'lucide-react';
 import { useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
+import { toast } from 'sonner';
+
+const supabase = createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 export function ProfileView({ profile, onUpdateProfile }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editedProfile, setEditedProfile] = useState(profile);
     const [newSkill, setNewSkill] = useState('');
+    const [isUploadingResume, setIsUploadingResume] = useState(false);
 
-    // Styles to match Onboarding
     const boxStyle = "border-2 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-none";
     const inputStyle = "border-2 border-zinc-900 bg-white p-2 shadow-inner focus-within:ring-2 ring-[#EBBB49] transition-all rounded-none";
     const yellowBtn = "bg-[#EBBB49] hover:bg-[#d4a942] text-zinc-900 font-black uppercase text-xs tracking-widest border-2 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none rounded-none";
 
-    const handleSave = () => {
-        onUpdateProfile(editedProfile);
-        setIsEditing(false);
+    const handleSave = async () => {
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const { error } = await supabase.from('profiles').update({
+                name: editedProfile.name,
+                location: editedProfile.location,
+                school: editedProfile.school,
+                major: editedProfile.major,
+                minor: editedProfile.minor,
+                skills: editedProfile.skills,
+            }).eq('id', user.id);
+            if (error) throw error;
+            onUpdateProfile(editedProfile);
+            setIsEditing(false);
+            toast.success('Profile saved');
+        } catch (err) {
+            toast.error(`Save failed: ${err.message}`);
+        }
+    };
+
+    const handleResumeUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploadingResume(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            const filePath = `${user.id}/resume_${Date.now()}.pdf`;
+            const { error: uploadError } = await supabase.storage.from('resumes').upload(filePath, file);
+            if (uploadError) throw uploadError;
+            const { data: { publicUrl } } = supabase.storage.from('resumes').getPublicUrl(filePath);
+            const { error: updateError } = await supabase.from('profiles').update({ resume_url: publicUrl }).eq('id', user.id);
+            if (updateError) throw updateError;
+            const updated = { ...editedProfile, resume_url: publicUrl };
+            setEditedProfile(updated);
+            onUpdateProfile(updated);
+            toast.success('Resume updated');
+        } catch (err) {
+            toast.error(`Upload failed: ${err.message}`);
+        } finally {
+            setIsUploadingResume(false);
+        }
     };
 
     return (
@@ -39,7 +84,7 @@ export function ProfileView({ profile, onUpdateProfile }) {
                     </h1>
                     <div className="flex flex-wrap justify-center md:justify-start gap-4 mt-2">
                         <span className="flex items-center gap-1 text-[10px] font-black uppercase text-zinc-500">
-                            <MapPin size={14} /> {profile.location || "Earth_Location_Pending"}
+                            <MapPin size={14} /> {profile.location || "Location not set"}
                         </span>
                         <span className="flex items-center gap-1 text-[10px] font-black uppercase text-[#EBBB49] bg-zinc-900 px-2 py-0.5">
                             Level {profile.level || 1} Intern
@@ -101,13 +146,39 @@ export function ProfileView({ profile, onUpdateProfile }) {
                             <Briefcase className="text-[#EBBB49]" />
                             <h2 className="font-black uppercase text-sm tracking-widest">Skills Matrix</h2>
                         </div>
-                        <div className="flex flex-wrap gap-2">
-                            {profile.skills?.map((skill) => (
-                                <Badge key={skill} className="bg-zinc-100 text-zinc-900 border-2 border-zinc-900 rounded-none font-black text-[10px] uppercase px-3 py-1">
-                                    {skill}
-                                </Badge>
-                            ))}
-                        </div>
+                        {isEditing ? (
+                            <div className="flex flex-wrap gap-2 p-3 bg-zinc-50 border-2 border-zinc-900 min-h-[50px]">
+                                {editedProfile.skills?.map((skill) => (
+                                    <span key={skill} className="flex items-center gap-1.5 px-3 py-1 bg-[#EBBB49] border-2 border-zinc-900 text-[10px] font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                                        {skill}
+                                        <X size={12} className="cursor-pointer" onClick={() => setEditedProfile({...editedProfile, skills: editedProfile.skills.filter(s => s !== skill)})} />
+                                    </span>
+                                ))}
+                                <input
+                                    className="bg-transparent outline-none text-[10px] font-bold uppercase flex-1 min-w-[100px]"
+                                    placeholder="+ Add skill, press Enter"
+                                    value={newSkill}
+                                    onChange={e => setNewSkill(e.target.value)}
+                                    onKeyDown={e => {
+                                        if (e.key === 'Enter' && newSkill.trim()) {
+                                            e.preventDefault();
+                                            if (!editedProfile.skills?.includes(newSkill.trim())) {
+                                                setEditedProfile({...editedProfile, skills: [...(editedProfile.skills || []), newSkill.trim()]});
+                                            }
+                                            setNewSkill('');
+                                        }
+                                    }}
+                                />
+                            </div>
+                        ) : (
+                            <div className="flex flex-wrap gap-2">
+                                {profile.skills?.map((skill) => (
+                                    <Badge key={skill} className="bg-zinc-100 text-zinc-900 border-2 border-zinc-900 rounded-none font-black text-[10px] uppercase px-3 py-1">
+                                        {skill}
+                                    </Badge>
+                                ))}
+                            </div>
+                        )}
                     </Card>
                 </div>
 
@@ -125,6 +196,37 @@ export function ProfileView({ profile, onUpdateProfile }) {
                                 <span className="text-xs font-bold">{profile.phone || "Not Linked"}</span>
                             </div>
                         </div>
+                    </Card>
+
+                    {/* Resume Card */}
+                    <Card className={`p-6 bg-white ${boxStyle}`}>
+                        <div className="flex items-center gap-2 border-b-2 border-zinc-100 pb-4 mb-4">
+                            <FileText className="text-[#EBBB49]" />
+                            <h2 className="font-black uppercase text-sm tracking-widest">Resume</h2>
+                        </div>
+                        {profile.resume_url ? (
+                            <div className="space-y-3">
+                                <a
+                                    href={profile.resume_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 text-xs font-black uppercase text-zinc-700 hover:text-[#EBBB49] transition-colors"
+                                >
+                                    <ExternalLink size={14} /> View Current Resume
+                                </a>
+                                <label className={`flex items-center justify-center gap-2 w-full py-3 cursor-pointer border-2 border-dashed border-zinc-400 hover:border-zinc-900 hover:bg-zinc-50 transition-all text-[10px] font-black uppercase text-zinc-500`}>
+                                    {isUploadingResume ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                                    {isUploadingResume ? 'Uploading...' : 'Replace Resume'}
+                                    <input type="file" accept=".pdf" className="hidden" onChange={handleResumeUpload} disabled={isUploadingResume} />
+                                </label>
+                            </div>
+                        ) : (
+                            <label className={`flex items-center justify-center gap-2 w-full py-6 cursor-pointer border-2 border-dashed border-zinc-400 hover:border-zinc-900 hover:bg-zinc-50 transition-all text-[10px] font-black uppercase text-zinc-500`}>
+                                {isUploadingResume ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                                {isUploadingResume ? 'Uploading...' : 'Upload Resume'}
+                                <input type="file" accept=".pdf" className="hidden" onChange={handleResumeUpload} disabled={isUploadingResume} />
+                            </label>
+                        )}
                     </Card>
 
                     {isEditing && (

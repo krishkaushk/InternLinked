@@ -91,7 +91,7 @@ export function OnboardingFlow({ onComplete }) {
 
             const { error: upsertError } = await supabase
                 .from('profiles')
-                .upsert({ 
+                .upsert({
                     id: user.id,
                     name: `${profile.firstName} ${profile.lastName}`.trim(),
                     location: profile.location,
@@ -101,6 +101,7 @@ export function OnboardingFlow({ onComplete }) {
                     school_start_date: profile.schoolStartDate ? `${profile.schoolStartDate}-01` : null,
                     grad_date: profile.gradDate ? `${profile.gradDate}-01` : null,
                     skills: profile.skills,
+                    resume_url: resumeUrl || null,
                     onboarding_completed: true,
                     xp: 150
                 });
