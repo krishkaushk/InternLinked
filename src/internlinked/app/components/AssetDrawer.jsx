@@ -1,12 +1,8 @@
 import { X, Download, Trash2, FileText, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from '@/utils/supabase';
 import { toast } from "sonner";
 
-const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 export function AssetDrawer({ application, isOpen, onClose }) {
     const [assets, setAssets] = useState([]);

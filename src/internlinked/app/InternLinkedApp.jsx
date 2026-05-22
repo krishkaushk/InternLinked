@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { createClient } from "@supabase/supabase-js";
+import { useLocation } from 'react-router-dom';
+import { supabase } from '../utils/supabase';
 import { Navigation } from "./components/Navigation";
 import { SimpleDashboard } from "./components/SimpleDashboard";
 import { ApplicationTracker } from "./components/ApplicationTracker";
@@ -8,12 +9,9 @@ import { JobMatches } from "./components/JobMatches";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { calculateUserProgress } from '../utils/gamification';
+import { fetchJobs } from '../utils/jobSearch';
+import { scoreJobs } from '../utils/llmScore';
 
-// 1. Supabase Client created outside component to prevent multiple instances
-const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 // 2. Helper function for streak logic
 const calculateStreak = (lastActivityDate, currentStreak = 0) => {
@@ -29,15 +27,37 @@ const calculateStreak = (lastActivityDate, currentStreak = 0) => {
 };
 
 export default function InternLinkedApp({ session }) {
-    const [currentView, setCurrentView] = useState('dashboard');
+    const location = useLocation();
     const [applications, setApplications] = useState([]);
     const [profile, setProfile] = useState(null);
     const [activities, setActivities] = useState([]);
-    const [userStats, setUserStats] = useState({
-        level: 1, xp: 0, xpIntoLevel: 0, nextLevelXp: 100,
-        currentStreak: 0, totalApplications: 0, interviewsScheduled: 0,
-        lastActivityDate: null
+    const [userStats, setUserStats] = useState(() => {
+        try {
+            const cached = localStorage.getItem('il_stats');
+            return cached ? JSON.parse(cached) : {
+                level: 1, xp: 0, xpIntoLevel: 0, nextLevelXp: 100,
+                currentStreak: 0, totalApplications: 0, interviewsScheduled: 0,
+                lastActivityDate: null
+            };
+        } catch { return { level: 1, xp: 0, xpIntoLevel: 0, nextLevelXp: 100, currentStreak: 0, totalApplications: 0, interviewsScheduled: 0, lastActivityDate: null }; }
     });
+    const [jobs, setJobs] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('il_jobs');
+            return cached ? JSON.parse(cached) : [];
+        } catch { return []; }
+    });
+    const [jobsLoading, setJobsLoading] = useState(false);
+
+    const saveUserStats = (stats) => {
+        setUserStats(stats);
+        try { localStorage.setItem('il_stats', JSON.stringify(stats)); } catch {}
+    };
+
+    const saveJobs = (scored) => {
+        setJobs(scored);
+        try { sessionStorage.setItem('il_jobs', JSON.stringify(scored)); } catch {}
+    };
 
     // 3. Initial Data Fetch
     useEffect(() => {
@@ -79,13 +99,13 @@ export default function InternLinkedApp({ session }) {
                 // Calculate current stats using your gamification logic
                 const progress = calculateUserProgress(mappedApps);
 
-                setUserStats(prev => ({
-                    ...prev,
+                saveUserStats({
+                    ...userStats,
                     ...progress,
                     currentStreak: profileData?.streak || 0,
                     lastActivityDate: profileData?.last_activity,
                     totalApplications: mappedApps.length
-                }));
+                });
             }
 
             // 4. Fetch the 5 most recent Activity Logs
@@ -104,7 +124,21 @@ export default function InternLinkedApp({ session }) {
         };
 
         fetchInitialData();
-    }, []); // Empty dependency array ensures this only runs once on mount
+    }, []);
+
+    useEffect(() => {
+        if (location.pathname !== '/jobs' || !profile?.skills?.length || jobs.length > 0) return;
+        setJobsLoading(true);
+        fetchJobs().then(async (rawJobs) => {
+            const scored = await scoreJobs(rawJobs, profile);
+            saveJobs(scored);
+            setJobsLoading(false);
+        }).catch(() => {
+            toast.error('Could not load job matches');
+            setJobsLoading(false);
+        });
+    }, [location.pathname, profile, jobs.length]);
+
 
     const triggerLevelUpAnimation = (newLevel) => {
         toast.custom(() => (
@@ -200,13 +234,13 @@ export default function InternLinkedApp({ session }) {
         }
 
         setApplications(finalApps);
-        setUserStats(prev => ({
-            ...prev,
+        saveUserStats({
+            ...userStats,
             ...progress,
             currentStreak: newStreakValue,
             lastActivityDate: todayISO,
             totalApplications: finalApps.length
-        }));
+        });
 
         if (!logErr && newLog) {
             setActivities(prev => [newLog, ...prev].slice(0, 5));
@@ -215,18 +249,9 @@ export default function InternLinkedApp({ session }) {
         toast.success(deletedId ? "Deleted" : "Saved");
     };
 
-    const renderView = () => {
-        switch (currentView) {
-            case 'dashboard': return <SimpleDashboard userStats={userStats} activities={activities} />;
-            case 'applications': return <ApplicationTracker applications={applications} onUpdateApplications={handleUpdateApplications} />;
-            case 'profile': return profile ? <ProfileView profile={profile} onUpdateProfile={setProfile} /> : null;
-            default: return <SimpleDashboard userStats={userStats} activities={activities} />;
-        }
-    };
-
     return (
         <div className="flex h-screen w-full bg-[#FCFBF4] overflow-hidden">
-            <Navigation currentView={currentView} onViewChange={setCurrentView} userStats={userStats} profile={profile} />
+            <Navigation userStats={userStats} profile={profile} />
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 <div className="bg-white border-b-4 border-zinc-900 px-6 py-4 flex justify-between items-center z-10">
                     <h1 className="text-4xl font-black italic tracking-tighter uppercase">
@@ -234,7 +259,21 @@ export default function InternLinkedApp({ session }) {
                     </h1>
                     <button onClick={() => supabase.auth.signOut()} className="px-4 py-2 border-2 border-zinc-900 bg-zinc-900 text-white text-[10px] font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">Exit Session</button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-6 lg:p-8">{renderView()}</div>
+                <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+                    {/* Keep all views mounted — show/hide with CSS so state is never lost */}
+                    <div style={{ display: location.pathname === '/dashboard' || location.pathname === '/' ? 'block' : 'none' }}>
+                        <SimpleDashboard userStats={userStats} activities={activities} />
+                    </div>
+                    <div style={{ display: location.pathname === '/applications' ? 'block' : 'none' }}>
+                        <ApplicationTracker applications={applications} onUpdateApplications={handleUpdateApplications} />
+                    </div>
+                    <div style={{ display: location.pathname === '/jobs' ? 'block' : 'none' }}>
+                        <JobMatches profile={profile} jobs={jobs} isLoading={jobsLoading} />
+                    </div>
+                    <div style={{ display: location.pathname === '/profile' ? 'block' : 'none' }}>
+                        {profile && <ProfileView profile={profile} onUpdateProfile={setProfile} />}
+                    </div>
+                </div>
             </main>
             <Toaster position="bottom-right" />
         </div>

@@ -10,13 +10,9 @@ import {
     Upload, CheckCircle, X, Calendar, BookOpen, Loader2, ExternalLink
 } from 'lucide-react';
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/utils/supabase';
 import { toast } from 'sonner';
 
-const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 export function ProfileView({ profile, onUpdateProfile }) {
     const [isEditing, setIsEditing] = useState(false);

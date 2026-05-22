@@ -5,13 +5,9 @@ import { AssetDrawer } from './AssetDrawer'; // Ensure this file exists
 import { Button } from '@/app/components/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { Plus, LayoutGrid, Table as TableIcon, X, FileUp, Link as LinkIcon, Trash2, FileText } from 'lucide-react';
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from '@/utils/supabase';
 import { toast } from "sonner";
 
-const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 export function ApplicationTracker({ applications, onUpdateApplications }) {
     // View & Modal State

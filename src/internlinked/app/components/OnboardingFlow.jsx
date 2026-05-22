@@ -1,14 +1,10 @@
 import { useState } from 'react';
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from '@/utils/supabase';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Upload, X, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
-const supabase = createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_ANON_KEY
-);
 
 export function OnboardingFlow({ onComplete }) {
     const [isParsing, setIsParsing] = useState(false);

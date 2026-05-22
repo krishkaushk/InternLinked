@@ -1,22 +1,21 @@
-import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutGrid, Target, Briefcase, User } from 'lucide-react';
 
-export function Navigation({ currentView, onViewChange, userStats, profile }) {
-    // Destructuring to ensure we use the correct level-specific XP
+export function Navigation({ userStats, profile }) {
+    const navigate = useNavigate();
+    const location = useLocation();
     const { level, xpIntoLevel, nextLevelXp } = userStats;
-
-    // Safety check for percentage to prevent overflow
     const progressPercentage = Math.min((xpIntoLevel / nextLevelXp) * 100, 100);
 
     const menuItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
-        { id: 'applications', label: 'Applications', icon: Briefcase },
-        { id: 'profile', label: 'Profile', icon: User },
+        { path: '/dashboard', label: 'Dashboard', icon: LayoutGrid },
+        { path: '/applications', label: 'Applications', icon: Briefcase },
+        { path: '/jobs', label: 'Job Matches', icon: Target },
+        { path: '/profile', label: 'Profile', icon: User },
     ];
 
     return (
         <div className="w-64 h-full bg-white border-r-4 border-zinc-900 flex flex-col shadow-[4px_0px_0px_0px_rgba(0,0,0,1)]">
-            {/* Header & XP Section */}
             <div className="p-6 border-b-4 border-zinc-900">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="bg-[#EBBB49] border-2 border-zinc-900 p-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
@@ -27,8 +26,6 @@ export function Navigation({ currentView, onViewChange, userStats, profile }) {
                         <span className="text-[10px] font-bold uppercase text-zinc-500">Level_{level}</span>
                     </div>
                 </div>
-
-                {/* Fixed Sidebar XP Bar */}
                 <div className="space-y-1">
                     <div className="flex justify-between text-[9px] font-black uppercase">
                         <span>{xpIntoLevel} XP</span>
@@ -43,15 +40,14 @@ export function Navigation({ currentView, onViewChange, userStats, profile }) {
                 </div>
             </div>
 
-            {/* Menu Items */}
             <nav className="flex-1 p-4 space-y-3">
                 {menuItems.map((item) => {
                     const Icon = item.icon;
-                    const isActive = currentView === item.id;
+                    const isActive = location.pathname === item.path || (item.path === '/dashboard' && location.pathname === '/');
                     return (
                         <button
-                            key={item.id}
-                            onClick={() => onViewChange(item.id)}
+                            key={item.path}
+                            onClick={() => navigate(item.path)}
                             className={`w-full flex items-center gap-4 p-3 font-black uppercase text-xs border-2 transition-all
                                 ${isActive
                                 ? 'bg-[#EBBB49] text-zinc-900 border-zinc-900 translate-x-[2px] translate-y-[2px] shadow-none'

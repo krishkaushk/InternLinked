@@ -1,11 +1,6 @@
 import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { Loader2, Mail, Lock, X, Minus, Square } from "lucide-react";
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { supabase } from '@/utils/supabase';
 
 export default function SignIn() {
   const [isSignUp, setIsSignUp] = useState(false);
