@@ -1,4 +1,4 @@
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
 
 async function fetchResumeBase64(resumeUrl) {
     try {
@@ -110,12 +110,12 @@ export async function scoreJobs(jobs, profile) {
     console.log(`[LLM] Scoring ${jobs.length} jobs. Resume: ${resumeBase64 ? 'attached' : 'not found — using skills only'}`);
 
     const results = [];
-    for (let i = 0; i < jobs.length; i += 5) {
-        const batch = jobs.slice(i, i + 5);
+    for (let i = 0; i < jobs.length; i += 3) {
+        const batch = jobs.slice(i, i + 3);
         const scored = await Promise.all(batch.map(job => scoreJob(job, profile, resumeBase64)));
         results.push(...scored.filter(Boolean));
-        console.log(`[LLM] Scored ${Math.min(i + 5, jobs.length)}/${jobs.length}`);
-        if (i + 5 < jobs.length) await new Promise(r => setTimeout(r, 4000));
+        console.log(`[LLM] Scored ${Math.min(i + 3, jobs.length)}/${jobs.length}`);
+        if (i + 3 < jobs.length) await new Promise(r => setTimeout(r, 12000));
     }
     return results.sort((a, b) => b.matchPercentage - a.matchPercentage);
 }
