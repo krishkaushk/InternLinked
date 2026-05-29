@@ -59,6 +59,11 @@ export default function InternLinkedApp({ session }) {
         try { sessionStorage.setItem('il_jobs', JSON.stringify(scored)); } catch {}
     };
 
+    const handleRefreshJobs = () => {
+        try { sessionStorage.removeItem('il_jobs'); } catch {}
+        setJobs([]);
+    };
+
     // 3. Initial Data Fetch
     useEffect(() => {
         const fetchInitialData = async () => {
@@ -268,7 +273,7 @@ export default function InternLinkedApp({ session }) {
                         <ApplicationTracker applications={applications} onUpdateApplications={handleUpdateApplications} />
                     </div>
                     <div style={{ display: location.pathname === '/jobs' ? 'block' : 'none' }}>
-                        <JobMatches profile={profile} jobs={jobs} isLoading={jobsLoading} />
+                        <JobMatches profile={profile} jobs={jobs} isLoading={jobsLoading} onRefresh={handleRefreshJobs} />
                     </div>
                     <div style={{ display: location.pathname === '/profile' ? 'block' : 'none' }}>
                         {profile && <ProfileView profile={profile} onUpdateProfile={setProfile} />}

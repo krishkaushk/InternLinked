@@ -1,13 +1,13 @@
 import { GREENHOUSE_COMPANIES, LEVER_COMPANIES } from './companySources';
 
-const INTERN_KEYWORDS = [
-    'intern', 'internship', 'co-op', 'coop', 'co op',
-    'new grad', 'entry level', 'entry-level',
-    'junior', 'graduate', 'placement', 'trainee'
-];
-
-const isInternRole = (title = '') =>
-    INTERN_KEYWORDS.some(kw => title.toLowerCase().includes(kw));
+const isInternRole = (title = '') => {
+    const t = title.toLowerCase();
+    return /\bintern\b/.test(t) ||   // "intern" as a whole word — excludes "internal"
+           t.includes('internship') ||
+           t.includes('co-op') ||
+           t.includes('co op') ||
+           t.includes('coop');
+};
 
 // Fetch job list without content (fast), filter intern roles, then fetch descriptions
 async function fetchGreenhouseCompany(company) {

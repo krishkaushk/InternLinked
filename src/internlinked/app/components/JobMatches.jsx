@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react';
-import { Search, SlidersHorizontal, Grid3x3, List, Briefcase, TrendingUp, Target, Clock, X } from 'lucide-react';
+import { Search, SlidersHorizontal, Grid3x3, List, Briefcase, TrendingUp, Target, Clock, X, RotateCcw } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/app/components/ui/select';
 import { JobCard } from '@/app/components/JobCard';
 import { JobDetailDrawer } from '@/app/components/JobDetailDrawer';
 
-export function JobMatches({ profile, jobs = [], isLoading = false }) {
+export function JobMatches({ profile, jobs = [], isLoading = false, onRefresh }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [viewMode, setViewMode] = useState('grid');
     const [selectedJob, setSelectedJob] = useState(null);
@@ -54,9 +54,19 @@ export function JobMatches({ profile, jobs = [], isLoading = false }) {
     return (
         <div className="h-full flex flex-col space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-4xl font-black uppercase tracking-tighter text-zinc-900">Job Matches</h1>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] italic text-zinc-400">Matched from Greenhouse & Lever</p>
+            <div className="flex items-end justify-between">
+                <div>
+                    <h1 className="text-4xl font-black uppercase tracking-tighter text-zinc-900">Job Matches</h1>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] italic text-zinc-400">Matched from Greenhouse & Lever</p>
+                </div>
+                <button
+                    onClick={onRefresh}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 border-2 border-zinc-900 px-4 py-2 text-[10px] font-black uppercase shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#EBBB49] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                    <RotateCcw className={`size-3 ${isLoading ? 'animate-spin' : ''}`} />
+                    Reload
+                </button>
             </div>
 
             {/* Stats */}

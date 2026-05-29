@@ -7,7 +7,7 @@ async function fetchResumeBase64(resumeUrl) {
         const blob = await res.blob();
         return new Promise((resolve) => {
             const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result.split(',')[1]); // strip data:...;base64,
+            reader.onloadend = () => resolve(reader.result.split(',')[1]);
             reader.onerror = () => resolve(null);
             reader.readAsDataURL(blob);
         });
@@ -16,10 +16,20 @@ async function fetchResumeBase64(resumeUrl) {
     }
 }
 
+// Robustly extract JSON from Gemini response — handles markdown fences and extra text
+function extractJSON(text) {
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start === -1 || end === -1) throw new Error('No JSON object found in response');
+    return JSON.parse(text.slice(start, end + 1));
+}
+
 function buildParts(job, profile, resumeBase64) {
     const daysSincePosted = job.postedDate
         ? Math.floor((Date.now() - new Date(job.postedDate).getTime()) / (1000 * 60 * 60 * 24))
         : 30;
+
+    const description = (job.description || '').slice(0, 1500);
 
     const jobText = `You are evaluating how well a student matches a job posting. Compute a score 0-100 using these exact weights:
 
@@ -30,7 +40,7 @@ function buildParts(job, profile, resumeBase64) {
 - 10% Seniority fit: is this role genuinely intern/entry-level? penalise if it requires 2+ years of experience
 
 ${resumeBase64 ? "The student's resume is attached as a PDF above." : `STUDENT PROFILE:
-- Skills: ${(profile.skills || []).join(', ')}
+- Skills: ${(profile.skills || []).join(', ') || 'Not specified'}
 - School: ${profile.school || 'N/A'}
 - Major: ${profile.major || 'N/A'}
 - Location: ${profile.location || 'N/A'}`}
@@ -40,15 +50,10 @@ JOB:
 - Company: ${job.companyName}
 - Location: ${job.location}
 - Posted: ${daysSincePosted} day(s) ago
-- Description: ${job.description.slice(0, 1500)}
+- Description: ${description || 'No description available'}
 
-Respond with ONLY valid JSON, no markdown:
-{
-  "matchPercentage": <number 0-100>,
-  "matchedSkills": [<skills/experiences relevant to this job>],
-  "missingSkills": [<important skills the job wants that the student lacks>],
-  "reason": "<one sentence explanation of the score>"
-}`;
+Respond with ONLY a valid JSON object, nothing else:
+{"matchPercentage": <number 0-100>, "matchedSkills": [<strings>], "missingSkills": [<strings>], "reason": "<one sentence>"}`;
 
     if (resumeBase64) {
         return [
@@ -73,36 +78,43 @@ async function scoreJob(job, profile, resumeBase64) {
             }
         );
 
-        if (!res.ok) return { ...job, matchPercentage: 0, matchedSkills: [], missingSkills: [], reason: '' };
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.error(`[Gemini] ${res.status} for "${job.title}":`, err?.error?.message || res.statusText);
+            return { ...job, matchPercentage: 0, matchedSkills: [], missingSkills: [], reason: '' };
+        }
 
         const data = await res.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+
+        const parsed = extractJSON(text);
 
         return {
             ...job,
-            matchPercentage: Math.min(100, Math.max(0, parsed.matchPercentage ?? 0)),
+            matchPercentage: Math.min(100, Math.max(0, Number(parsed.matchPercentage) || 0)),
             matchedSkills: parsed.matchedSkills ?? [],
             missingSkills: parsed.missingSkills ?? [],
             reason: parsed.reason ?? '',
         };
-    } catch {
-        return { ...job, matchPercentage: 0, matchedSkills: [], missingSkills: [] };
+    } catch (e) {
+        console.error(`[Gemini] Failed scoring "${job.title}":`, e.message);
+        return { ...job, matchPercentage: 0, matchedSkills: [], missingSkills: [], reason: '' };
     }
 }
 
 export async function scoreJobs(jobs, profile) {
-    // Fetch resume once and reuse for all jobs
     const resumeBase64 = profile.resume_url
         ? await fetchResumeBase64(profile.resume_url)
         : null;
 
-    // Score in batches of 5 to respect Gemini's 15 RPM free tier
+    console.log(`[LLM] Scoring ${jobs.length} jobs. Resume: ${resumeBase64 ? 'attached' : 'not found — using skills only'}`);
+
     const results = [];
     for (let i = 0; i < jobs.length; i += 5) {
         const batch = jobs.slice(i, i + 5);
         const scored = await Promise.all(batch.map(job => scoreJob(job, profile, resumeBase64)));
         results.push(...scored.filter(Boolean));
+        console.log(`[LLM] Scored ${Math.min(i + 5, jobs.length)}/${jobs.length}`);
         if (i + 5 < jobs.length) await new Promise(r => setTimeout(r, 4000));
     }
     return results.sort((a, b) => b.matchPercentage - a.matchPercentage);
