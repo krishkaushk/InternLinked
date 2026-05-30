@@ -132,7 +132,7 @@ export default function InternLinkedApp({ session }) {
     }, []);
 
     useEffect(() => {
-        if (location.pathname !== '/jobs' || !profile?.skills?.length || jobs.length > 0) return;
+        if (location.pathname !== '/jobs' || !profile?.skills?.length || jobs.length > 0 || jobsLoading) return;
         setJobsLoading(true);
         fetchJobs().then(async (rawJobs) => {
             const scored = await scoreJobs(rawJobs, profile);
@@ -142,7 +142,7 @@ export default function InternLinkedApp({ session }) {
             toast.error('Could not load job matches');
             setJobsLoading(false);
         });
-    }, [location.pathname, profile, jobs.length]);
+    }, [location.pathname, profile, jobs.length, jobsLoading]);
 
 
     const triggerLevelUpAnimation = (newLevel) => {

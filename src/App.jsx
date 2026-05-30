@@ -1,13 +1,8 @@
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import SignIn from "./internlinked/app/components/SignIn";
-import { OnboardingFlow } from "./internlinked/app/components/OnboardingFlow"; 
+import { OnboardingFlow } from "./internlinked/app/components/OnboardingFlow";
 import InternLinkedApp from "./internlinked/app/InternLinkedApp";
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+import { supabase } from "./internlinked/utils/supabase";
 
 export default function App() {
     const [session, setSession] = useState(null);
