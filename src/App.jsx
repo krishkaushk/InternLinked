@@ -8,47 +8,38 @@ export default function App() {
     const [session, setSession] = useState(null);
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
-  
+
     const fetchProfile = async (userId) => {
-        setLoading(true);
         try {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', userId)
                 .single();
-    
-            if (error || !data) {
-                setProfile({ onboarding_completed: false });
-            } else {
-                setProfile(data);
-            }
-        } catch (err) {
+            setProfile(error || !data ? { onboarding_completed: false } : data);
+        } catch {
             setProfile({ onboarding_completed: false });
-        } finally {
-            setLoading(false);
         }
     };
-  
+
     useEffect(() => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        setSession(session);
-        if (session) fetchProfile(session.user.id);
-        else setLoading(false);
-      });
-  
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setSession(session);
-        if (session) fetchProfile(session.user.id);
-        else {
-          setProfile(null);
-          setLoading(false);
-        }
-      });
-  
-      return () => subscription.unsubscribe();
+        // Initial session check — only place that controls the loading spinner
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            if (session) fetchProfile(session.user.id).finally(() => setLoading(false));
+            else setLoading(false);
+        });
+
+        // Silent auth state updates (token refresh, tab focus, etc.) — no loading spinner
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            if (session) fetchProfile(session.user.id);
+            else setProfile(null);
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
-  
+
     if (loading) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFCF0]">
@@ -59,7 +50,7 @@ export default function App() {
             </div>
         );
     }
-  
+
     if (!session) return <SignIn />;
 
     if (session && (!profile || profile.onboarding_completed === false)) {
