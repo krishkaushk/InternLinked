@@ -22,15 +22,25 @@ export function JobMatches({ profile, jobs = [], isLoading = false, onRefresh })
                 job.matchedSkills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
             const matchesLocation = locationFilter === 'all' || job.location.toLowerCase().includes(locationFilter.toLowerCase());
             const matchesType = typeFilter === 'all' || job.type === typeFilter;
+            // Unscored jobs (ok === false — a failed batch) never match a specific %-range
+            // filter; they only show up under "All Matches" so a scoring failure doesn't get
+            // silently bucketed as "Low".
             let matchesPct = true;
-            if (matchFilter === 'high') matchesPct = job.matchPercentage >= 80;
-            else if (matchFilter === 'medium') matchesPct = job.matchPercentage >= 60 && job.matchPercentage < 80;
-            else if (matchFilter === 'low') matchesPct = job.matchPercentage < 60;
+            if (matchFilter !== 'all') {
+                if (job.ok === false) matchesPct = false;
+                else if (matchFilter === 'high') matchesPct = job.matchPercentage >= 80;
+                else if (matchFilter === 'medium') matchesPct = job.matchPercentage >= 60 && job.matchPercentage < 80;
+                else if (matchFilter === 'low') matchesPct = job.matchPercentage < 60;
+            }
             return matchesSearch && matchesLocation && matchesType && matchesPct;
         });
 
         filtered.sort((a, b) => {
-            if (sortBy === 'match') return b.matchPercentage - a.matchPercentage;
+            if (sortBy === 'match') {
+                const av = a.ok === false ? -1 : (a.matchPercentage ?? 0);
+                const bv = b.ok === false ? -1 : (b.matchPercentage ?? 0);
+                return bv - av;
+            }
             if (sortBy === 'date') return new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime();
             if (sortBy === 'company') return a.companyName.localeCompare(b.companyName);
             return 0;
@@ -39,12 +49,17 @@ export function JobMatches({ profile, jobs = [], isLoading = false, onRefresh })
         return filtered;
     }, [jobs, searchQuery, locationFilter, typeFilter, matchFilter, sortBy]);
 
-    const stats = useMemo(() => ({
-        total: jobs.length,
-        high: jobs.filter(j => j.matchPercentage >= 80).length,
-        avg: jobs.length > 0 ? Math.round(jobs.reduce((s, j) => s + j.matchPercentage, 0) / jobs.length) : 0,
-        today: jobs.filter(j => new Date(j.postedDate).toDateString() === new Date().toDateString()).length,
-    }), [jobs]);
+    const stats = useMemo(() => {
+        // Unscored jobs shouldn't drag down the average or hide from "Total Matches" — they're
+        // still real postings, just not yet (or not successfully) scored.
+        const scored = jobs.filter(j => j.ok !== false);
+        return {
+            total: jobs.length,
+            high: scored.filter(j => j.matchPercentage >= 80).length,
+            avg: scored.length > 0 ? Math.round(scored.reduce((s, j) => s + j.matchPercentage, 0) / scored.length) : 0,
+            today: jobs.filter(j => new Date(j.postedDate).toDateString() === new Date().toDateString()).length,
+        };
+    }, [jobs]);
 
     const activeFilters = [locationFilter !== 'all', typeFilter !== 'all', matchFilter !== 'all'].filter(Boolean).length;
 
@@ -57,7 +72,7 @@ export function JobMatches({ profile, jobs = [], isLoading = false, onRefresh })
             <div className="flex items-end justify-between">
                 <div>
                     <h1 className="text-4xl font-black uppercase tracking-tighter text-zinc-900">Job Matches</h1>
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] italic text-zinc-400">Matched from Greenhouse & Lever</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] italic text-zinc-400">Matched to your resume</p>
                 </div>
                 <button
                     onClick={onRefresh}

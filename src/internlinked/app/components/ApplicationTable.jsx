@@ -10,6 +10,7 @@ import { Badge } from '@/app/components/ui/badge';
 import { format } from 'date-fns';
 import { ExternalLink, Eye, FileText } from 'lucide-react';
 import { toast } from "sonner";
+import { getSignedUrl } from '@/utils/storagePaths';
 
 const statusConfig = {
     saved: { label: 'SAVED', className: 'bg-zinc-100 text-zinc-900 border-2 border-zinc-900' },
@@ -35,7 +36,9 @@ export function ApplicationTable({ applications, onSelectApplication }) {
         if (!fileUrl) return toast.error("NO_ASSET_FOUND");
 
         try {
-            const response = await fetch(fileUrl);
+            const signedUrl = await getSignedUrl('cvs', fileUrl);
+            if (!signedUrl) throw new Error('Could not sign file URL');
+            const response = await fetch(signedUrl);
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');

@@ -153,26 +153,26 @@ export function ApplicationTracker({ applications, onUpdateApplications }) {
                         .upload(fileName, file);
     
                     if (storageError) throw storageError;
-    
-                    const { data: urlData } = supabase.storage.from('cvs').getPublicUrl(fileName);
-                    
+
+                    // cvs is a private bucket — store the bare storage path, not a public URL.
+                    // AssetDrawer/ApplicationTable resolve a short-lived signed URL on read.
                     await supabase.from('files').insert([{
                         user_id: user.id,
                         application_id: appData.id,
                         file_name: file.name,
-                        file_url: urlData.publicUrl,
+                        file_url: fileName,
                         type: 'document'
                     }]);
-    
-                    return urlData.publicUrl;
+
+                    return fileName;
                 });
     
-                const urls = await Promise.all(uploadPromises);
-                
-                // Update the record with the first file URL and get the REFRESHED object
+                const paths = await Promise.all(uploadPromises);
+
+                // Update the record with the first file's storage path and get the REFRESHED object
                 const { data: refreshedApp } = await supabase
                     .from('applications')
-                    .update({ cv_url: urls[0] })
+                    .update({ cv_url: paths[0] })
                     .eq('id', appData.id)
                     .select()
                     .single();

@@ -14,4 +14,7 @@ export default defineConfig({
         },
     },
     assetsInclude: ['**/*.svg', '**/*.csv'],
+    optimizeDeps: {
+        exclude: ['pdfjs-dist'],
+    },
 })

@@ -41,9 +41,11 @@ export default function InternLinkedApp({ session }) {
             };
         } catch { return { level: 1, xp: 0, xpIntoLevel: 0, nextLevelXp: 100, currentStreak: 0, totalApplications: 0, interviewsScheduled: 0, lastActivityDate: null }; }
     });
+    // localStorage (not sessionStorage) so matches persist across tab close/reopen, not just
+    // within one tab session.
     const [jobs, setJobs] = useState(() => {
         try {
-            const cached = sessionStorage.getItem('il_jobs');
+            const cached = localStorage.getItem('il_jobs');
             return cached ? JSON.parse(cached) : [];
         } catch { return []; }
     });
@@ -56,11 +58,11 @@ export default function InternLinkedApp({ session }) {
 
     const saveJobs = (scored) => {
         setJobs(scored);
-        try { sessionStorage.setItem('il_jobs', JSON.stringify(scored)); } catch {}
+        try { localStorage.setItem('il_jobs', JSON.stringify(scored)); } catch {}
     };
 
     const handleRefreshJobs = () => {
-        try { sessionStorage.removeItem('il_jobs'); } catch {}
+        try { localStorage.removeItem('il_jobs'); } catch {}
         setJobs([]);
     };
 
@@ -89,9 +91,12 @@ export default function InternLinkedApp({ session }) {
             }
 
             // 3. Fetch Applications
+            // .eq('user_id', ...) is defense in depth, not a substitute for RLS: this filter
+            // stays even though the applications RLS policy already scopes rows to auth.uid().
             const { data: apps, error: appsError } = await supabase
                 .from('applications')
                 .select('*')
+                .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
             if (appsError) {
@@ -131,13 +136,48 @@ export default function InternLinkedApp({ session }) {
         fetchInitialData();
     }, []);
 
+    // Fires the toast for a scoreJobs() outcome — shared by the initial fetch+score run and the
+    // "retry failed" action, so both surface the same four distinct states.
+    const presentScoringOutcome = (scoredCount, failedCount, degraded, rateLimited) => {
+        if (rateLimited) {
+            const mins = Math.max(1, Math.round(rateLimited.retryAfterSeconds / 60));
+            toast.warning(`Scoring limit reached — try again in ~${mins}m`);
+        } else if (failedCount > 0) {
+            toast.error(`${scoredCount} of ${scoredCount + failedCount} jobs scored — ${failedCount} failed`, {
+                action: { label: 'Retry', onClick: handleRetryFailedScoring },
+            });
+        } else if (degraded) {
+            toast.info('AI scoring at capacity — showing keyword match');
+        }
+    };
+
+    const handleRetryFailedScoring = async () => {
+        const failed = jobs.filter(j => j.ok === false);
+        if (!failed.length || jobsLoading) return;
+        setJobsLoading(true);
+        try {
+            const { results, failedCount, degraded, rateLimited } = await scoreJobs(failed, profile);
+            const byId = new Map(results.map(r => [r.id, r]));
+            const merged = jobs.map(j => byId.get(j.id) ?? j);
+            saveJobs(merged);
+            presentScoringOutcome(failed.length - failedCount, failedCount, degraded, rateLimited);
+        } catch {
+            toast.error('Retry failed — could not re-score jobs');
+        } finally {
+            setJobsLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (location.pathname !== '/jobs' || !profile?.skills?.length || jobs.length > 0 || jobsLoading) return;
         setJobsLoading(true);
         fetchJobs().then(async (rawJobs) => {
-            const scored = await scoreJobs(rawJobs, profile);
-            saveJobs(scored);
+            const { results, failedCount, degraded, rateLimited } = await scoreJobs(rawJobs, profile, {
+                onProgress: (partial) => saveJobs(partial),
+            });
+            saveJobs(results);
             setJobsLoading(false);
+            presentScoringOutcome(results.length - failedCount, failedCount, degraded, rateLimited);
         }).catch(() => {
             toast.error('Could not load job matches');
             setJobsLoading(false);

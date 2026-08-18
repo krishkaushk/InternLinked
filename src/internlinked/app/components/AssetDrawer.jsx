@@ -1,6 +1,7 @@
 import { X, Download, Trash2, FileText, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/utils/supabase';
+import { getSignedUrl, storagePathFromValue } from '@/utils/storagePaths';
 import { toast } from "sonner";
 
 
@@ -37,7 +38,9 @@ export function AssetDrawer({ application, isOpen, onClose }) {
     const handleDownload = async (fileUrl, fileName) => {
         const toastId = toast.loading("Downloading...");
         try {
-            const res = await fetch(fileUrl);
+            const signedUrl = await getSignedUrl('cvs', fileUrl);
+            if (!signedUrl) throw new Error("Could not sign file URL");
+            const res = await fetch(signedUrl);
             if (!res.ok) throw new Error("Network response was not ok");
             
             const blob = await res.blob();
@@ -65,10 +68,9 @@ export function AssetDrawer({ application, isOpen, onClose }) {
 
         const toastId = toast.loading("Deleting...");
         try {
-            // 1. Extract storage path from URL
-            // Adjust the split string if your bucket name is different from 'cvs'
-            const path = fileUrl.split('/storage/v1/object/public/cvs/')[1];
-            
+            // 1. Resolve storage path — accepts a legacy public URL or a bare path
+            const path = storagePathFromValue('cvs', fileUrl);
+
             if (path) {
                 await supabase.storage.from('cvs').remove([path]);
             }

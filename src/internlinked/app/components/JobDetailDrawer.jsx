@@ -23,6 +23,7 @@ export function JobDetailDrawer({ job, profile, open, onClose, onSave }) {
         return suggestions;
     };
 
+    const isScored = job.ok !== false;
     const match = getMatchStyle(job.matchPercentage);
     const suggestions = generateSuggestions();
 
@@ -60,19 +61,25 @@ export function JobDetailDrawer({ job, profile, open, onClose, onSave }) {
                     </div>
 
                     {/* Match Score */}
-                    <div className={`${match.bg} border-2 border-zinc-700 p-3`}>
-                        <div className="flex justify-between items-center mb-2">
-                            <div className="flex items-center gap-2">
-                                <Sparkles className="size-4 text-zinc-900" />
-                                <span className="text-[10px] font-black uppercase text-zinc-900">Profile Match</span>
+                    {isScored ? (
+                        <div className={`${match.bg} border-2 border-zinc-700 p-3`}>
+                            <div className="flex justify-between items-center mb-2">
+                                <div className="flex items-center gap-2">
+                                    <Sparkles className="size-4 text-zinc-900" />
+                                    <span className="text-[10px] font-black uppercase text-zinc-900">Profile Match</span>
+                                </div>
+                                <span className="text-2xl font-black italic text-zinc-900">{job.matchPercentage}%</span>
                             </div>
-                            <span className="text-2xl font-black italic text-zinc-900">{job.matchPercentage}%</span>
+                            <div className="h-2.5 border border-zinc-900 bg-white/50">
+                                <div className="h-full bg-zinc-900" style={{ width: `${job.matchPercentage}%` }} />
+                            </div>
+                            {job.reason && <p className="text-[10px] font-bold text-zinc-800 mt-2 italic">"{job.reason}"</p>}
                         </div>
-                        <div className="h-2.5 border border-zinc-900 bg-white/50">
-                            <div className="h-full bg-zinc-900" style={{ width: `${job.matchPercentage}%` }} />
+                    ) : (
+                        <div className="bg-zinc-800 border-2 border-zinc-700 p-3 flex items-center gap-2">
+                            <span className="text-[10px] font-black uppercase text-zinc-400">Scoring failed for this job — try Reload</span>
                         </div>
-                        {job.reason && <p className="text-[10px] font-bold text-zinc-800 mt-2 italic">"{job.reason}"</p>}
-                    </div>
+                    )}
                 </div>
 
                 {/* Content */}

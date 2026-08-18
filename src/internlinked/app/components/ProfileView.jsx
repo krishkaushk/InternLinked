@@ -9,16 +9,26 @@ import {
     GraduationCap, FileText, Plus, Edit,
     Upload, CheckCircle, X, Calendar, BookOpen, Loader2, ExternalLink
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase';
+import { extractPdfText, sha256Hex } from '@/utils/pdfText';
+import { getSignedUrl } from '@/utils/storagePaths';
 import { toast } from 'sonner';
-
 
 export function ProfileView({ profile, onUpdateProfile }) {
     const [isEditing, setIsEditing] = useState(false);
     const [editedProfile, setEditedProfile] = useState(profile);
     const [newSkill, setNewSkill] = useState('');
     const [isUploadingResume, setIsUploadingResume] = useState(false);
+    const [resumeViewUrl, setResumeViewUrl] = useState(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        getSignedUrl('resumes', profile.resume_url).then((url) => {
+            if (!cancelled) setResumeViewUrl(url);
+        });
+        return () => { cancelled = true; };
+    }, [profile.resume_url]);
 
     const boxStyle = "border-2 border-zinc-900 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] rounded-none";
     const inputStyle = "border-2 border-zinc-900 bg-white p-2 shadow-inner focus-within:ring-2 ring-[#EBBB49] transition-all rounded-none";
@@ -53,10 +63,22 @@ export function ProfileView({ profile, onUpdateProfile }) {
             const filePath = `${user.id}/resume_${Date.now()}.pdf`;
             const { error: uploadError } = await supabase.storage.from('resumes').upload(filePath, file);
             if (uploadError) throw uploadError;
-            const { data: { publicUrl } } = supabase.storage.from('resumes').getPublicUrl(filePath);
-            const { error: updateError } = await supabase.from('profiles').update({ resume_url: publicUrl }).eq('id', user.id);
+
+            // resumes is a private bucket — read it back via a short-lived signed URL, both to
+            // display it and to extract text from it (free, local, no AI call).
+            const signedUrl = await getSignedUrl('resumes', filePath);
+            if (!signedUrl) throw new Error('Could not sign resume URL');
+
+            const resumeText = await extractPdfText(signedUrl);
+            const resumeTextSha256 = resumeText ? await sha256Hex(resumeText) : null;
+
+            const { error: updateError } = await supabase.from('profiles').update({
+                resume_url: filePath, // storage path now, not a public URL — resolved via createSignedUrl on render
+                resume_text: resumeText,
+                resume_text_sha256: resumeTextSha256,
+            }).eq('id', user.id);
             if (updateError) throw updateError;
-            const updated = { ...editedProfile, resume_url: publicUrl };
+            const updated = { ...editedProfile, resume_url: filePath };
             setEditedProfile(updated);
             onUpdateProfile(updated);
             toast.success('Resume updated');
@@ -203,10 +225,11 @@ export function ProfileView({ profile, onUpdateProfile }) {
                         {profile.resume_url ? (
                             <div className="space-y-3">
                                 <a
-                                    href={profile.resume_url}
+                                    href={resumeViewUrl || undefined}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-2 text-xs font-black uppercase text-zinc-700 hover:text-[#EBBB49] transition-colors"
+                                    aria-disabled={!resumeViewUrl}
+                                    className={`flex items-center gap-2 text-xs font-black uppercase transition-colors ${resumeViewUrl ? 'text-zinc-700 hover:text-[#EBBB49]' : 'text-zinc-300 pointer-events-none'}`}
                                 >
                                     <ExternalLink size={14} /> View Current Resume
                                 </a>

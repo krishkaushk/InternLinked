@@ -16,6 +16,7 @@ export function JobCard({ job, viewMode, onSave, onView }) {
 
     const formatType = (type) => type?.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') || '';
 
+    const isScored = job.ok !== false;
     const match = getMatchStyle(job.matchPercentage);
 
     if (viewMode === 'list') {
@@ -46,15 +47,21 @@ export function JobCard({ job, viewMode, onSave, onView }) {
                 </div>
 
                 <div className="flex flex-col gap-2 lg:w-44">
-                    <div className={`${match.bg} border-2 border-zinc-900 p-3`}>
-                        <div className="flex justify-between items-center mb-1.5">
-                            <span className="text-[9px] font-black uppercase text-zinc-600">Match</span>
-                            <span className="text-xl font-black italic text-zinc-900">{job.matchPercentage}%</span>
+                    {isScored ? (
+                        <div className={`${match.bg} border-2 border-zinc-900 p-3`}>
+                            <div className="flex justify-between items-center mb-1.5">
+                                <span className="text-[9px] font-black uppercase text-zinc-600">Match</span>
+                                <span className="text-xl font-black italic text-zinc-900">{job.matchPercentage}%</span>
+                            </div>
+                            <div className="h-2 border border-zinc-900 bg-white">
+                                <div className={`h-full ${match.bar}`} style={{ width: `${job.matchPercentage}%` }} />
+                            </div>
                         </div>
-                        <div className="h-2 border border-zinc-900 bg-white">
-                            <div className={`h-full ${match.bar}`} style={{ width: `${job.matchPercentage}%` }} />
+                    ) : (
+                        <div className="bg-zinc-100 border-2 border-zinc-300 p-3 flex items-center justify-center">
+                            <span className="text-[9px] font-black uppercase text-zinc-400">Not Scored</span>
                         </div>
-                    </div>
+                    )}
                     <button onClick={() => onView(job)} className="w-full border-2 border-zinc-900 bg-zinc-900 text-[#EBBB49] py-2 text-[10px] font-black uppercase italic shadow-[2px_2px_0px_0px_#EBBB49] hover:bg-zinc-700 transition-all">View Details</button>
                     <div className="flex gap-2">
                         <button onClick={() => onSave(job.id)} className="flex-1 border-2 border-zinc-900 py-2 hover:bg-zinc-100 transition-all flex items-center justify-center">
@@ -78,10 +85,16 @@ export function JobCard({ job, viewMode, onSave, onView }) {
                 <div className="size-11 bg-zinc-900 border-2 border-zinc-900 flex items-center justify-center flex-shrink-0">
                     <Building2 className="size-5 text-[#EBBB49]" />
                 </div>
-                <div className={`${match.bg} border-2 border-zinc-900 px-2.5 py-1 flex items-center gap-1.5`}>
-                    <Sparkles className="size-3 text-zinc-900" />
-                    <span className="text-sm font-black text-zinc-900">{job.matchPercentage}%</span>
-                </div>
+                {isScored ? (
+                    <div className={`${match.bg} border-2 border-zinc-900 px-2.5 py-1 flex items-center gap-1.5`}>
+                        <Sparkles className="size-3 text-zinc-900" />
+                        <span className="text-sm font-black text-zinc-900">{job.matchPercentage}%</span>
+                    </div>
+                ) : (
+                    <div className="bg-zinc-100 border-2 border-zinc-300 px-2.5 py-1">
+                        <span className="text-[9px] font-black uppercase text-zinc-400">Not Scored</span>
+                    </div>
+                )}
             </div>
 
             <h3 className="font-black uppercase italic tracking-tight text-zinc-900 text-sm leading-tight mb-0.5 line-clamp-2">{job.title}</h3>
