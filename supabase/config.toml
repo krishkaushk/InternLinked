@@ -1,0 +1,7 @@
+project_id = "internlinked"
+
+[functions.score-jobs]
+verify_jwt = true
+
+[functions.fetch-jobs]
+verify_jwt = true
