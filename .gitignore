@@ -11,6 +11,7 @@ node_modules/
 dist/
 .idea/
 .env
+HANDOFF.md
 
 node_modules
 dist
