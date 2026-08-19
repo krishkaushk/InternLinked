@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { computeMatch } from './matchScore';
+import { computeMatch, selectDiverse } from './matchScore';
 
 // Groq scoring now happens server-side (supabase/functions/score-jobs) — the key is no longer
 // bundled into client JS, real per-user/global rate limiting applies, and retry/backoff is
@@ -7,6 +7,11 @@ import { computeMatch } from './matchScore';
 const BATCH_SIZE = 10;
 const INTER_BATCH_DELAY_MS = 12000;
 const MAX_JOBS_SCORED = 25; // keyword-prefiltered before any Groq call — see matchScore.js
+// A high-volume poster (e.g. one company running 40 near-identical internship postings)
+// shouldn't be able to fill most of MAX_JOBS_SCORED by itself — see selectDiverse in
+// matchScore.js for the backfill-if-starved behavior that keeps this from shrinking the result
+// when there genuinely aren't enough other companies to fill the remaining slots.
+const MAX_PER_COMPANY = 3;
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -49,12 +54,14 @@ export async function scoreJobs(jobs, profile, { onProgress } = {}) {
     // Free, local prefilter — decides which jobs are worth spending Groq tokens on. Only the top
     // MAX_JOBS_SCORED by keyword overlap get a real AI-reasoned score; everything else is left
     // out of the result entirely (by product decision — a raw keyword-overlap percentage isn't a
-    // trustworthy enough signal to present as "matched to your resume").
-    const toScore = describedJobs
+    // trustworthy enough signal to present as "matched to your resume"). selectDiverse caps any
+    // one company at MAX_PER_COMPANY of those slots so a high-volume poster can't crowd out
+    // everyone else, backfilling from the capped-out leftovers if there aren't enough other
+    // companies to fill MAX_JOBS_SCORED.
+    const ranked = describedJobs
         .map(job => ({ job, pre: computeMatch(profile.skills, job.description) }))
-        .sort((a, b) => b.pre.matchPercentage - a.pre.matchPercentage)
-        .slice(0, MAX_JOBS_SCORED)
-        .map(({ job }) => job);
+        .sort((a, b) => b.pre.matchPercentage - a.pre.matchPercentage);
+    const toScore = selectDiverse(ranked, MAX_PER_COMPANY, MAX_JOBS_SCORED).map(({ job }) => job);
 
     const results = [];
     let failedCount = 0;

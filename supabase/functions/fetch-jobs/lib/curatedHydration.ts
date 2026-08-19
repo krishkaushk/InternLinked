@@ -4,12 +4,16 @@
 // client's keyword prefilter or Groq, so this recovers what's cheaply recoverable: many curated
 // entries link to postings hosted on ATSs we already integrate with directly (Greenhouse,
 // SmartRecruiters), which expose single-posting endpoints we already call elsewhere. Anything
-// hosted on a platform we don't otherwise integrate (Workday, Oracle Cloud HCM, iCIMS, Workable,
-// Eightfold, custom company career sites, etc.) has no cheap unified hydration path and is left
-// as-is — those jobs simply stay unscoreable, which is an acceptable gap, not a regression.
+// else falls through to a generic JSON-LD JobPosting scrape (see lib/jsonLd.ts), which covers a
+// real chunk of the rest (confirmed against live data: Workday, Eightfold) without needing a
+// dedicated integration per platform. Whatever's left after both — pages that render content
+// client-side, or block simple server-side fetches outright — stays unscoreable, which is an
+// accepted gap, not a regression.
 import { NormalizedJob } from '../types.ts';
 import { fetchGreenhouseJobDescription } from '../sources/greenhouse.ts';
 import { fetchSmartRecruitersJobDescription } from '../sources/smartrecruiters.ts';
+import { fetchTextWithStatus } from './http.ts';
+import { extractJobPostingDescription } from './jsonLd.ts';
 
 const GREENHOUSE_URL_RE = /^https?:\/\/(?:boards|job-boards)\.greenhouse\.io\/([^/]+)\/jobs\/(\d+)/i;
 const SMARTRECRUITERS_URL_RE = /^https?:\/\/jobs\.smartrecruiters\.com\/([^/]+)\/(\d+)/i;
@@ -21,13 +25,20 @@ async function hydrateOne(job: NormalizedJob): Promise<NormalizedJob> {
     const ghMatch = job.jobUrl.match(GREENHOUSE_URL_RE);
     if (ghMatch) {
       const { description, requirements } = await fetchGreenhouseJobDescription(ghMatch[1], ghMatch[2]);
-      return description ? { ...job, description, requirements } : job;
+      if (description) return { ...job, description, requirements };
     }
 
     const srMatch = job.jobUrl.match(SMARTRECRUITERS_URL_RE);
     if (srMatch) {
       const { description, requirements } = await fetchSmartRecruitersJobDescription(srMatch[1], srMatch[2]);
-      return description ? { ...job, description, requirements } : job;
+      if (description) return { ...job, description, requirements };
+    }
+
+    // Generic fallback for everything not matched (or matched but empty) above.
+    const { text } = await fetchTextWithStatus(job.jobUrl);
+    if (text) {
+      const description = extractJobPostingDescription(text);
+      if (description) return { ...job, description };
     }
   } catch (e) {
     console.warn(`[fetch-jobs] curated hydration failed for ${job.jobUrl}: ${(e as Error).message}`);

@@ -44,3 +44,38 @@ export async function fetchJsonWithStatus(
     return { data: null, status: null };
   }
 }
+
+// A browser-like User-Agent measurably improves success odds fetching arbitrary career-page
+// HTML (confirmed empirically: several ATS/custom career pages return different content, or
+// reject the request outright, for Deno's default UA) — never used for the JSON API sources
+// above, which don't care about UA.
+const BROWSER_USER_AGENT =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+
+// Fetches raw response text (HTML) rather than parsing as JSON — for generic career-page
+// scraping (see lib/jsonLd.ts) where the response isn't a JSON API. Same never-throws contract.
+export async function fetchTextWithStatus(
+  url: string,
+  opts: { timeoutMs?: number } = {}
+): Promise<{ text: string | null; status: number | null }> {
+  const policy: RetryPolicy = opts.timeoutMs
+    ? { ...JOB_BOARD_RETRY_POLICY, perAttemptTimeoutMs: opts.timeoutMs }
+    : JOB_BOARD_RETRY_POLICY;
+
+  try {
+    const { response } = await fetchWithRetry(url, { headers: { 'User-Agent': BROWSER_USER_AGENT } }, policy);
+    if (!response.ok) {
+      console.warn(`[fetch-jobs] fetchTextWithStatus non-ok status ${response.status} for ${url}`);
+      return { text: null, status: response.status };
+    }
+    try {
+      return { text: await response.text(), status: response.status };
+    } catch (readErr) {
+      console.warn(`[fetch-jobs] fetchTextWithStatus body read failure for ${url}: ${(readErr as Error).message}`);
+      return { text: null, status: response.status };
+    }
+  } catch (err) {
+    console.warn(`[fetch-jobs] fetchTextWithStatus request failure for ${url}: ${(err as Error).message}`);
+    return { text: null, status: null };
+  }
+}
