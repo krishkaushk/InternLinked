@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
 import { Navigation } from "./components/Navigation";
@@ -50,6 +50,7 @@ export default function InternLinkedApp({ session }) {
         } catch { return []; }
     });
     const [jobsLoading, setJobsLoading] = useState(false);
+    const jobsScoringRef = useRef(false);
 
     const saveUserStats = (stats) => {
         setUserStats(stats);
@@ -169,7 +170,8 @@ export default function InternLinkedApp({ session }) {
     };
 
     useEffect(() => {
-        if (location.pathname !== '/jobs' || !profile?.skills?.length || jobs.length > 0 || jobsLoading) return;
+        if (location.pathname !== '/jobs' || !profile?.skills?.length || jobs.length > 0 || jobsScoringRef.current) return;
+        jobsScoringRef.current = true;
         setJobsLoading(true);
         fetchJobs().then(async (rawJobs) => {
             const { results, failedCount, degraded, rateLimited } = await scoreJobs(rawJobs, profile, {
@@ -180,9 +182,11 @@ export default function InternLinkedApp({ session }) {
             presentScoringOutcome(results.length - failedCount, failedCount, degraded, rateLimited);
         }).catch(() => {
             toast.error('Could not load job matches');
+        }).finally(() => {
+            jobsScoringRef.current = false;
             setJobsLoading(false);
         });
-    }, [location.pathname, profile, jobs.length, jobsLoading]);
+    }, [location.pathname, profile, jobs.length]);
 
 
     const triggerLevelUpAnimation = (newLevel) => {
