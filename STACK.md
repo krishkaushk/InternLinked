@@ -28,7 +28,7 @@
 | `activities` | Activity log for gamification feed |
 | `files` | Files attached to individual applications |
 | `job_scores` | Per-user Groq scoring cache, keyed by `(user_id, job_id)` and scoped to `resume_sha256` — avoids re-paying Groq token cost for unchanged jobs/resume |
-| `job_listings_cache` | Single-row shared cache of the fetch-jobs pipeline output, 30-min TTL, refreshed via stale-while-revalidate + a cron warmer |
+| `job_listings_cache` | Single-row shared cache of the fetch-jobs pipeline output, 30-min TTL, refreshed via stale-while-revalidate (no cron warmer — refresh only happens as a side effect of a stale request) |
 | `api_rate_limits` | Fixed-window request/token counters (per-user and global) backing both Edge Functions, via the `consume_rate_limit` RPC |
 
 `education`/`experience` tables referenced in an earlier version of this doc were unreferenced by any client code — confirm via `supabase db pull` whether they exist; if so they should carry deny-all RLS (see `supabase/migrations/20260817120000_enable_rls_core_tables.sql`).
@@ -37,7 +37,7 @@
 | Function | Purpose |
 |---|---|
 | `score-jobs` | Proxies Groq (`openai/gpt-oss-20b`) scoring server-side. Batches of 10, resume/description truncated to 2500/500 chars, per-user + global rate limits, exponential-backoff retry on 429/5xx/network errors, a global token-budget gate that degrades to local keyword scoring instead of failing, and a `job_scores` cache. |
-| `fetch-jobs` | Fans out to Greenhouse, Lever, Ashby, SmartRecruiters, and two curated GitHub internship-list repos (`SimplifyJobs/Summer2027-Internships`, `vanshb03/Summer2027-Internships`), dedupes across sources, caches the merged result in `job_listings_cache` (30-min TTL). |
+| `fetch-jobs` | Fans out to Greenhouse, Lever, Ashby, SmartRecruiters, and two curated GitHub internship-list repos (`SimplifyJobs/Summer2027-Internships`, `vanshb03/Summer2027-Internships`), dedupes across sources, caches the merged result in `job_listings_cache` (30-min TTL, stale-while-revalidate — see `fetch-jobs/index.ts`). |
 
 Both functions share `supabase/functions/_shared/` (auth, CORS, error codes, retry/backoff, rate limiting) and require `GROQ_API_KEY` as a Supabase secret (`supabase secrets set` — never `VITE_`-prefixed).
 
@@ -63,7 +63,7 @@ Both functions share `supabase/functions/_shared/` (auth, CORS, error codes, ret
 - **Single Supabase client** — shared via `src/internlinked/utils/supabase.js` to avoid multiple GoTrue instances
 - **State persistence** — `userStats` cached in `localStorage`, scored jobs in `sessionStorage` to avoid re-fetching on tab switch
 - **Keep-alive views** — all route views stay mounted (CSS display toggle) so state is never lost on navigation
-- **Three-tier job fetch** — `job_listings_cache` (shared, 30-min TTL) → per-source list fetch (fast) → description hydration only for surviving/intern-filtered results (Greenhouse, SmartRecruiters); Ashby/Lever/curated-GitHub already carry descriptions in their list responses
+- **Three-tier job fetch** — `job_listings_cache` (shared, 30-min TTL, stale-while-revalidate, no cron warmer) → per-source list fetch (fast) → description hydration only for surviving/intern-filtered results (Greenhouse, SmartRecruiters); Ashby/Lever/curated-GitHub already carry descriptions in their list responses
 - **Client-side keyword prefilter before Groq** — `matchScore.js`'s free keyword-overlap scorer narrows the fetch-jobs candidate pool (up to ~150) down to the top ~25 before any job reaches the rate-limited/paid `score-jobs` Groq call
 - **Private Storage, signed URLs** — `resumes`/`cvs` buckets are private; DB columns that used to hold a public URL now hold a bare storage path, resolved via `getSignedUrl()` (`src/internlinked/utils/storagePaths.js`) at render/download time
 - **Brutalist UI** — hard borders, yellow (#EBBB49) accent, no border radius, offset shadows

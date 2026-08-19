@@ -21,12 +21,6 @@ interface CuratedRecord {
 
 const HTTP_URL_RE = /^https?:\/\//i;
 
-function normalizeTerms(r: CuratedRecord): string[] {
-  if (Array.isArray(r.terms)) return r.terms;
-  if (typeof r.season === 'string' && r.season) return [r.season];
-  return [];
-}
-
 // `date_posted`/`date_updated` are real Unix epochs, but inconsistently seconds vs ms across
 // records — detect via magnitude rather than trusting a fixed unit.
 function epochToMs(v: unknown): number | null {
@@ -88,8 +82,6 @@ export async function fetchGithubCuratedRepo(config: GithubCuratedRepoConfig): P
       salary: null,
       _sources: [`github:${config.key}`],
     });
-
-    void normalizeTerms(r); // not part of NormalizedJob's public shape; not needed by the client today
   }
 
   if (jobs.length === 0) {

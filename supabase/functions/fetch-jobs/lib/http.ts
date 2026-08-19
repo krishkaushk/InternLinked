@@ -13,26 +13,8 @@ const JOB_BOARD_RETRY_POLICY: RetryPolicy = {
 };
 
 export async function fetchJson(url: string, opts: { timeoutMs?: number } = {}): Promise<any | null> {
-  const policy: RetryPolicy = opts.timeoutMs
-    ? { ...JOB_BOARD_RETRY_POLICY, perAttemptTimeoutMs: opts.timeoutMs }
-    : JOB_BOARD_RETRY_POLICY;
-
-  try {
-    const { response } = await fetchWithRetry(url, {}, policy);
-    if (!response.ok) {
-      console.warn(`[fetch-jobs] fetchJson non-ok status ${response.status} for ${url}`);
-      return null;
-    }
-    try {
-      return await response.json();
-    } catch (parseErr) {
-      console.warn(`[fetch-jobs] fetchJson JSON parse failure for ${url}: ${(parseErr as Error).message}`);
-      return null;
-    }
-  } catch (err) {
-    console.warn(`[fetch-jobs] fetchJson request failure for ${url}: ${(err as Error).message}`);
-    return null;
-  }
+  const { data } = await fetchJsonWithStatus(url, opts);
+  return data;
 }
 
 // Exposes the HTTP status of a fetchJson-style call when the caller needs to distinguish

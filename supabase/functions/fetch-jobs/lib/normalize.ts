@@ -33,6 +33,20 @@ export function truncate(str: string | null | undefined, max: number): string {
   return s.length > max ? s.slice(0, max) : s;
 }
 
+// Extracts <li>...</li> contents from an HTML fragment. Deliberately NOT `.split('<')` — that
+// was a bug in the original client-side code (jobSearch.js) that produced raw HTML fragments
+// instead of clean requirement strings. Shared by lever.ts and smartrecruiters.ts.
+export function extractListItems(html: string): string[] {
+  const items: string[] = [];
+  const re = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) !== null) {
+    const text = stripHtml(m[1]);
+    if (text) items.push(text);
+  }
+  return items;
+}
+
 // Accepts a Date, epoch ms, epoch seconds, or an ISO/parseable date string. Returns an ISO
 // string, or null for anything missing/invalid/out-of-range. NEVER default to "now" — a
 // missing posted date must stay null so the pipeline doesn't fabricate freshness.

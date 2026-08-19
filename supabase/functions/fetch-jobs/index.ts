@@ -11,7 +11,7 @@ import { runPipeline } from './pipeline.ts';
 import { NormalizedJob, SourceStats } from './types.ts';
 
 const CACHE_ROW_ID = 'global';
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min — matches the migration's comment/intent
+const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min — single source of truth for the TTL value
 const REFRESH_LOCK_MS = 2 * 60 * 1000; // 2 min — guards against a stampede of background refreshes
 
 interface CacheRow {

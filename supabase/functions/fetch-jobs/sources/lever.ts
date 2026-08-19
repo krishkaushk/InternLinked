@@ -1,6 +1,6 @@
 import { NormalizedJob, SourceResult, SourceStat } from '../types.ts';
 import { fetchJsonWithStatus } from '../lib/http.ts';
-import { isInternRole, stripHtml, toIsoDate, truncate } from '../lib/normalize.ts';
+import { extractListItems, isInternRole, toIsoDate, truncate } from '../lib/normalize.ts';
 
 interface LeverListItem {
   id: string;
@@ -16,20 +16,6 @@ interface LeverListItem {
   hostedUrl?: string;
   absoluteUrl?: string;
   lists?: Array<{ text?: string; content?: string }>;
-}
-
-// Extracts <li>...</li> contents from an HTML fragment. Deliberately NOT `.split('<')` — that
-// was a bug in the original client-side code (jobSearch.js) that produced raw HTML fragments
-// instead of clean requirement strings.
-function extractListItems(html: string): string[] {
-  const items: string[] = [];
-  const re = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    const text = stripHtml(m[1]);
-    if (text) items.push(text);
-  }
-  return items;
 }
 
 export async function fetchLeverCompany(company: string): Promise<SourceResult> {

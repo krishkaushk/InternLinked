@@ -29,10 +29,10 @@ export interface ParsedJobScore {
 // Reasoning-style models (e.g. gpt-oss) often prepend chain-of-thought text before the actual
 // answer, which breaks a naive "find the first '[' and last ']'" parse if that preamble itself
 // contains stray brackets — this is what was causing every batch to come back
-// MODEL_OUTPUT_INVALID. With `response_format: { type: 'json_object' }` set on the Groq request
-// (see index.ts), `text` should already BE a valid JSON object like `{"scores": [...]}` with no
-// surrounding prose — so try a direct parse first, and only fall back to bracket-hunting
-// heuristics for resilience if that ever isn't honored.
+// MODEL_OUTPUT_INVALID. index.ts deliberately does NOT set `response_format: json_object` (Groq's
+// constrained-JSON decoder for this model returned json_validate_failed under token pressure), so
+// the model's raw text may or may not be clean JSON — try a direct parse first (often is), and
+// fall back to bracket-hunting heuristics below when it's mixed in with prose/reasoning preamble.
 export function extractJSONArray(text: string): ParsedJobScore[] {
   try {
     const direct = JSON.parse(text);

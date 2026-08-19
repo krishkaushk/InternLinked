@@ -1,12 +1,13 @@
-export function computeMatch(userSkills, qualifications = [], description = '') {
-    if (!userSkills?.length) return { matchPercentage: 0, matchedSkills: [], missingSkills: [] };
+export function computeMatch(userSkills, description = '') {
+    const skillList = (userSkills ?? []).filter(s => typeof s === 'string' && s.trim().length > 0);
+    if (!skillList.length) return { matchPercentage: 0, matchedSkills: [], missingSkills: [] };
 
-    const corpus = [...qualifications, description].join(' ').toLowerCase();
+    const corpus = description.toLowerCase();
 
     const matchedSkills = [];
     const missingSkills = [];
 
-    for (const skill of userSkills) {
+    for (const skill of skillList) {
         if (corpus.includes(skill.toLowerCase())) {
             matchedSkills.push(skill);
         } else {
@@ -14,7 +15,7 @@ export function computeMatch(userSkills, qualifications = [], description = '') 
         }
     }
 
-    const matchPercentage = Math.round((matchedSkills.length / userSkills.length) * 100);
+    const matchPercentage = Math.round((matchedSkills.length / skillList.length) * 100);
 
     return { matchPercentage, matchedSkills, missingSkills };
 }

@@ -1,6 +1,6 @@
 import { NormalizedJob, SourceResult, SourceStat } from '../types.ts';
 import { fetchJsonWithStatus } from '../lib/http.ts';
-import { isInternRole, stripHtml, toIsoDate } from '../lib/normalize.ts';
+import { extractListItems, isInternRole, stripHtml, toIsoDate } from '../lib/normalize.ts';
 
 const SR_MAX_PAGES = 3;
 const SR_PAGE_SIZE = 100;
@@ -26,17 +26,6 @@ interface SmartRecruitersDetailResponse {
       qualifications?: { text?: string };
     };
   };
-}
-
-function extractListItems(html: string): string[] {
-  const items: string[] = [];
-  const re = /<li[^>]*>([\s\S]*?)<\/li>/gi;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) !== null) {
-    const text = stripHtml(m[1]);
-    if (text) items.push(text);
-  }
-  return items;
 }
 
 // Exported (and made job-shape-agnostic, taking company+id directly rather than parsing a `sr-`

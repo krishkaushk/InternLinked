@@ -40,8 +40,9 @@ export function OnboardingFlow({ onComplete }) {
             const filePath = `${user.id}/resume_${Date.now()}.pdf`;
             
             await supabase.storage.from('resumes').upload(filePath, file);
-            const { data: { publicUrl } } = supabase.storage.from('resumes').getPublicUrl(filePath);
-            setResumeUrl(publicUrl);
+            // resumes bucket is private — store the bare path; storagePaths.js resolves it to a
+            // signed URL at render/download time (see ProfileView.jsx for the read side).
+            setResumeUrl(filePath);
 
             const response = await fetch(`https://extraction-api.nanonets.com/api/v1/extract/sync`, {
                 method: 'POST',

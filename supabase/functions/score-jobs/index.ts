@@ -333,9 +333,13 @@ Deno.serve(async (req) => {
       }
     }
 
-    // --- upsert newly-scored (non-cache-hit, ok:true) results into the cache ---
+    // --- upsert newly-scored (non-cache-hit, ok:true, LLM-sourced) results into the cache ---
+    // Keyword-fallback results (source: 'keyword') are used for this response but deliberately
+    // NOT cached — they only exist because the global Groq token budget was exhausted, and
+    // caching them would permanently serve a degraded score as if it were a real LLM score
+    // (job_scores has no column to distinguish the two), even after the budget recovers.
     const rowsToUpsert = [...liveResults.values()]
-      .filter((r): r is ScoredResult => r.ok)
+      .filter((r): r is ScoredResult => r.ok && r.source === 'llm')
       .map((r) => ({
         user_id: user.id,
         job_id: r.jobId,

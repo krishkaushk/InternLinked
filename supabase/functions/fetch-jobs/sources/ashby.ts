@@ -46,7 +46,7 @@ export async function fetchAshbyCompany(board: string): Promise<SourceResult> {
     id: `ab-${j.id}`,
     companyName: board,
     title: j.title.trim(),
-    location: j.location || j.secondaryLocations?.[0]?.location || (j.isRemote ? 'Remote' : 'Remote'),
+    location: j.location || j.secondaryLocations?.[0]?.location || 'Remote',
     type: 'internship',
     postedDate: toIsoDate(j.publishedAt ?? null),
     description: truncate(j.descriptionPlain || stripHtml(j.descriptionHtml ?? ''), 2000),

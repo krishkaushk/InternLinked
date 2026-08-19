@@ -123,8 +123,9 @@ export async function checkGlobalTokenBudget(
 }
 
 // Fire-and-forget reconciliation of ACTUAL token usage (from Groq's response) against the
-// per-minute counter, after the estimate was already used to gate the request. Never await
-// this in a way that blocks the response to the client.
+// DAILY counter — the per-minute counter was already debited by the estimate in
+// checkGlobalTokenBudget and is not corrected here; only the daily ceiling gets the accurate
+// figure. Never await this in a way that blocks the response to the client.
 export function reconcileTokenUsage(adminClient: SupabaseClient, actualTokens: number): void {
   consume(adminClient, {
     subject: GLOBAL_SUBJECT,

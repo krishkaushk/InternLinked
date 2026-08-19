@@ -51,7 +51,7 @@ export async function scoreJobs(jobs, profile, { onProgress } = {}) {
     // out of the result entirely (by product decision — a raw keyword-overlap percentage isn't a
     // trustworthy enough signal to present as "matched to your resume").
     const toScore = describedJobs
-        .map(job => ({ job, pre: computeMatch(profile.skills, [], job.description) }))
+        .map(job => ({ job, pre: computeMatch(profile.skills, job.description) }))
         .sort((a, b) => b.pre.matchPercentage - a.pre.matchPercentage)
         .slice(0, MAX_JOBS_SCORED)
         .map(({ job }) => job);
